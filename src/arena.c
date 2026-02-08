@@ -43,6 +43,18 @@ void  *arena_push(Arena *arena, u64 size)
     return NULL;
 }
 
+void *arena_push_packed(Arena *arena, u64 size)
+{
+    if (arena->pos + size <= arena->cap)
+    {
+        void *ptr = (u8*)arena->buffer + arena->pos;
+        arena->pos += size; 
+        memset(ptr, 0, size);
+        return ptr;
+    }
+    return NULL;
+}
+
 void arena_reset(Arena *arena)
 {
     if (arena)

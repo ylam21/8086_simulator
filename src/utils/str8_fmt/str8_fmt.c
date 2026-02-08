@@ -1,4 +1,4 @@
-#include "strjoin_fmt.h"
+#include "str8_fmt.h"
 
 static t_fmt_opt parse_options(u8 **fmt)
 {
@@ -28,9 +28,9 @@ static t_fmt_opt parse_options(u8 **fmt)
     return opt;
 }
 
-u8 *strjoin_fmt(Arena *arena, u8 *fmt, ...)
+String8 str8_fmt(Arena *arena, u8 *fmt, ...)
 {
-    u8 *result = (u8 *)arena->buffer + arena->pos;
+    u8 *start_ptr = (u8 *)arena->buffer + arena->pos;
 
     va_list args;
     va_start(args, fmt);
@@ -49,32 +49,28 @@ u8 *strjoin_fmt(Arena *arena, u8 *fmt, ...)
             }
             else if (*fmt)
             {
-                u8 *c = arena_push(arena, 1);
+                u8 *c = arena_push_packed(arena, 1);
                 if (!c)
                 {
-                    return NULL;
+                    return (String8){0};
                 }
                 *c = *fmt;
             }
         }
         else
         {
-            u8 *c = arena_push(arena, 1u);
+            u8 *c = arena_push_packed(arena, 1);
             if (!c)
             {
-                return NULL;
+                return (String8){0};
             }
             *c = *fmt;
         }
         fmt++;
     }
-
     va_end(args);
-    u8 *c = arena_push(arena, 1u);
-    if (!c)
-    {
-        return NULL;
-    }
-    *c = '\0';
-    return result;
+
+    u64 size = (u64)((u8 *)arena->buffer + arena->pos  - start_ptr);
+
+    return (String8){ .str = start_ptr, .size = size};
 }

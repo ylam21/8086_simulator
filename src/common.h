@@ -26,10 +26,8 @@ struct String8
 
 #include "arena.h"
 #include "utils/string_utils.h"
-#include "utils/strjoin_fmt/strjoin_fmt.h"
+#include "utils/str8_fmt/str8_fmt.h"
 
 #define PROGRAM_PATH "bin/simulate8086"
-#define LIFE_ARENA_SIZE 1024*1024
-
 
 #endif

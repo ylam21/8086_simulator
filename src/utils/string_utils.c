@@ -26,29 +26,29 @@ s64	is_whitespace(u8 c)
 		|| c == ' ');
 }
 
-static s64	get_start_idx(u8 *s)
+static u64	get_start_idx(String8 s)
 {
-	s64	idx;
+	u64	pos;
 
-	idx = 0;
-	while (s[idx] != 0)
+	pos = 0;
+	while (pos < s.size)
 	{
-		if (!is_space(s[idx]))
-			return (idx);
-		idx++;
+		if (!is_space(s.str[pos]))
+			return (pos);
+		pos += 1;
 	}
-	return (-1);
+	return (pos);
 }
 
 s64 string8tos64(String8 s)
 {
-	s64	start_pos;
-	s64	pos;
+	u64	start_pos;
+	u64	pos;
 	s64	sign;
 	s64	acc;
 
-	start_pos = get_start_idx(s.str);
-	if (start_pos == -1)
+	start_pos = get_start_idx(s);
+	if (start_pos == s.size)
 		return (0);
 	pos = start_pos;
 	sign = 0;
@@ -59,7 +59,7 @@ s64 string8tos64(String8 s)
 		pos++;
 	}
 	acc = 0;
-	while (s.str[pos] != 0 && is_num(s.str[pos]))
+	while (pos < s.size && is_num(s.str[pos]))
 	{
 		acc = acc * 10 + s.str[pos] - '0';
 		pos++;

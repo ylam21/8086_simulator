@@ -19,6 +19,7 @@ struct Arena
 
 Arena *arena_create(u64 size);
 void *arena_push(Arena *arena, u64 size);
+void *arena_push_packed(Arena *arena, u64 size);
 void arena_reset(Arena *arena);
 void arena_destroy(Arena *arena);
 

@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+static u8 get_reg_idx(u8 *reg, u8 *regs_names[8]);
+
 static u64 get_mnemonic(String8 line, String8 *mnemonic, u64 pos)
 {   
     u64 offset = 0;
@@ -30,7 +32,7 @@ static u64 get_mnemonic(String8 line, String8 *mnemonic, u64 pos)
 static u64 get_operand(String8 line, String8 *operand, u64 pos)
 {
     u64 offset = 0;
-    while ((offset + pos) < line.size && is_space(line.str[offset + pos]))
+    while ((offset + pos) < line.size && is_whitespace(line.str[offset + pos]))
     {
         offset += 1;
     }
@@ -69,18 +71,8 @@ static s64 get_value_from_reg(String8 reg, u16 regs[8], u8 *regs_names[8])
 
 static void modify_dest(u16 *regs, u8 *regs_names[8], String8 dest, s64 src_value)
 {
-    u8 idx;
-
-    idx = 0;
-    while (idx < 8)
-    {
-        if (strncmp((char *)dest.str, (char *)regs_names[idx], 2) == 0)
-        {
-            regs[idx] += src_value;
-            return;
-        }
-        idx += 1;
-    }
+    u8 idx = get_reg_idx(dest.str, regs_names);
+    regs[idx] = src_value;
 }
 
 static u8 get_reg_idx(u8 *reg, u8 *regs_names[8])
@@ -101,8 +93,8 @@ static u8 get_reg_idx(u8 *reg, u8 *regs_names[8])
 
 static void write_line(Arena *arena, s32 fd, String8 line, String8 dest, u16 reg_start, u16 regs_end)
 {
-    u8 *result = strjoin_fmt(arena,(u8 *)"%s ; %s:%x->%x\n", (u8*)line.str, dest, reg_start, regs_end);
-    write(fd, result, strlen((char *)result));
+    String8 result = str8_fmt(arena,(u8 *)"%s ; %s:%x->%x\n", line, dest, reg_start, regs_end);
+    write(fd, result.str, result.size);
 }
 
 static void process_line(Arena *arena, u16 *regs, String8 line, s32 fd)
@@ -110,7 +102,7 @@ static void process_line(Arena *arena, u16 *regs, String8 line, s32 fd)
     u8 *regs_names[8] =
     {
         (u8*)"ax", (u8*)"bx",(u8*) "cx",(u8*) "dx",
-        (u8*) "sp",(u8*) "bp",(u8*) "si",(u8*) "di"
+        (u8*)"sp",(u8*) "bp",(u8*) "si",(u8*) "di"
     };
 
     u16 regs_old[8];
@@ -120,8 +112,13 @@ static void process_line(Arena *arena, u16 *regs, String8 line, s32 fd)
     u64 pos = 0;
 
     pos += get_mnemonic(line, &mnemonic, pos); // not needed for the first few exercices
+    if (mnemonic.size == 0) return;
     pos += get_operand(line, &dest, pos);
-    pos += 1; // skip ',' separator
+    while (pos < line.size && is_whitespace(line.str[pos]))
+    {
+        pos += 1;
+    }
+    pos += 1;
     pos += get_operand(line, &src, pos);
 
     s64 src_value;
@@ -155,25 +152,29 @@ static String8 extract_line(String8 buffer, u64 pos)
 
 static void write_final_regs(Arena *arena, s32 fd, u16 regs[8])
 {
-    u8 *ax = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"ax", regs[0], regs[0]);
-    u8 *bx = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"bx", regs[1], regs[1]);
-    u8 *cx = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"cx", regs[2], regs[2]);
-    u8 *dx = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"dx", regs[3], regs[3]);
-    u8 *sp = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"sp", regs[4], regs[4]);
-    u8 *bp = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"bp", regs[5], regs[5]);
-    u8 *si = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"si", regs[6], regs[6]);
-    u8 *di = strjoin_fmt(arena,(u8 *) "%-7s: %04x (%d)\n", (u8 *)"di", regs[7], regs[7]);
-    u8 *result = strjoin_fmt(arena, (u8 *)"\nFinal Registers:\n%s%s%s%s%s%s%s%s",ax, bx, cx, dx, sp, bp, si, di);
-    write(fd, result, strlen((char *)result));
+    String8 ax = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"ax", .size = 2}, regs[0], regs[0]);
+    String8 bx = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"bx", .size = 2}, regs[1], regs[1]);
+    String8 cx = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"cx", .size = 2}, regs[2], regs[2]);
+    String8 dx = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"dx", .size = 2}, regs[3], regs[3]);
+    String8 sp = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"sp", .size = 2}, regs[4], regs[4]);
+    String8 bp = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"bp", .size = 2}, regs[5], regs[5]);
+    String8 si = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"si", .size = 2}, regs[6], regs[6]);
+    String8 di = str8_fmt(arena,(u8 *) "%7s: 0x%04x (%d)\n", (String8){.str = (u8 *)"di", .size = 2}, regs[7], regs[7]);
+    String8 result = str8_fmt(arena, (u8 *)"\nFinal Registers:\n%s%s%s%s%s%s%s%s", ax, bx, cx, dx, sp, bp, si, di);
+    write(fd, result.str, result.size);
 }
 
 static void simulate_8086(Arena *arena, String8 buffer, s32 fd)
 {
-    u16 regs[8]; // Array where we store 8 registers, 16-bit wide each
+    u16 regs[8] = {0}; // Array where we store 8 registers, 16-bit wide each
     u64 pos = 0;
 
-    // skip header "bits 16"
-    pos += strlen("bits 16") + 1;
+    pos += strlen("bits 16");
+    while (pos < buffer.size && is_whitespace(buffer.str[pos]))
+    {
+        pos += 1;
+    }
+
     while (pos < buffer.size)
     {
         String8 line = extract_line(buffer, pos);
@@ -183,6 +184,7 @@ static void simulate_8086(Arena *arena, String8 buffer, s32 fd)
         {
             pos += 1;
         }
+        arena_reset(arena);
     }
     write_final_regs(arena, fd, regs);
 }
@@ -195,7 +197,6 @@ static String8 read_file(Arena *arena, s32 fd)
     u8 *data = arena_push(arena, len);
     if (!data)
     {
-        close(fd);
         return (String8){0};
     }
     
@@ -203,11 +204,8 @@ static String8 read_file(Arena *arena, s32 fd)
     if (bytes_read != (s64)len)
     {
         fprintf(stderr, "Error: Read unexpected amount of bytes\n");
-        close(fd);
         return (String8){0};
     }
-
-    close(fd);
 
     return (String8){ .str = data, .size = len};
 }
@@ -230,7 +228,7 @@ int main(int argc, char **argv)
     }
     
     u8 *filename_out = (u8 *)"out.txt";
-    s32 fd_out = open((char *)filename_out, O_CREAT | O_TRUNC | O_WRONLY, 0744);
+    s32 fd_out = open((char *)filename_out, O_CREAT | O_TRUNC | O_WRONLY, 0777);
     if (fd_out == -1)
     {
         fprintf(stderr, "Error: Could not open %s\n", filename_out);
@@ -238,7 +236,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
 
-    Arena *life_arena = arena_create(LIFE_ARENA_SIZE);
+    Arena *life_arena = arena_create(1024 * 1024);
     if (!life_arena)
     {
         close(fd_in);
