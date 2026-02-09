@@ -18,6 +18,6 @@ typedef void (*fmt_handler_t)(Arena *arena, va_list args, t_fmt_opt opt);
 
 extern fmt_handler_t specifier_table[256];
 
-String8 str8_fmt(Arena *arena, u8 *fmt, ...);
+String8 str8_fmt(Arena *arena, String8 fmt, ...);
 
 #endif

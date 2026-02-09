@@ -22,7 +22,7 @@ struct String8
     u64 size;
     u8 *str;
 };
-#define STR8_LIT(s) (String8){ (u8*)(s), sizeof(s) - 1 }
+#define STR8_LIT(s) (String8){sizeof(s) - 1, (u8*)(s)}
 
 #include "arena.h"
 #include "utils/string_utils.h"

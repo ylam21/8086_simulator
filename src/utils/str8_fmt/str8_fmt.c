@@ -1,60 +1,63 @@
 #include "str8_fmt.h"
 
-static t_fmt_opt parse_options(u8 **fmt)
+static t_fmt_opt parse_options(String8 fmt, u64 *pos)
 {
     t_fmt_opt opt = { .padding_char = CHAR_SPACE, .width = 0, .left_align = 0};
-    u8 *f = *fmt;
+    u8 *f = fmt.str;
+    u64 p = *pos;
 
-    while (*f == '-' || *f == '0')
+    while (p < fmt.size && (f[p] == '-' || f [p]== '0'))
     {
-        if (*f == '-')
+        if (f[p] == '-')
         {
             opt.left_align = 1;
         }
-        else if (*f == '0')
+        else if (f[p] == '0')
         {
             opt.padding_char = '0';
         }
-        f++;
+        p += 1;
     }
 
-    while (*f >= '0' && *f <= '9')
+    while (p < fmt.size && f[p] >= '0' && f[p] <= '9')
     {
-        opt.width = ((opt.width << 3) + ( opt.width << 1)) + (*f - '0');
-        f++;
+        opt.width = ((opt.width << 3) + (opt.width << 1)) + f[p] - '0';
+        p += 1;
     }
 
-    *fmt = f;
+    *pos = p;
+
     return opt;
 }
 
-String8 str8_fmt(Arena *arena, u8 *fmt, ...)
+String8 str8_fmt(Arena *arena, String8 fmt, ...)
 {
     u8 *start_ptr = (u8 *)arena->buffer + arena->pos;
 
     va_list args;
     va_start(args, fmt);
 
-    while (*fmt)
+    u64 pos = 0;
+    while (pos < fmt.size)
     {
-        if (*fmt == '%')
+        if (fmt.str[pos] == '%')
         {
-            fmt++;
-            t_fmt_opt opt = parse_options(&fmt);
+            pos++;
+            t_fmt_opt opt = parse_options(fmt, &pos);
 
-            fmt_handler_t handler = specifier_table[*fmt];
+            fmt_handler_t handler = specifier_table[fmt.str[pos]];
             if (handler)
             {
                 handler(arena, args, opt);
             }
-            else if (*fmt)
+            else if (pos < fmt.size)
             {
                 u8 *c = arena_push_packed(arena, 1);
                 if (!c)
                 {
                     return (String8){0};
                 }
-                *c = *fmt;
+                *c = fmt.str[pos];
             }
         }
         else
@@ -64,9 +67,9 @@ String8 str8_fmt(Arena *arena, u8 *fmt, ...)
             {
                 return (String8){0};
             }
-            *c = *fmt;
+            *c = fmt.str[pos];
         }
-        fmt++;
+        pos++;
     }
     va_end(args);
 

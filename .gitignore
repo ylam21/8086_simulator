@@ -3,5 +3,6 @@ build
 
 a.out
 out.txt
+out.asm
 
 *.env
