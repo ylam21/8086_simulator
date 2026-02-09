@@ -248,6 +248,7 @@ int main(int argc, char **argv)
     if (buffer.str)
     {
         simulate_8086(life_arena, buffer, fd_out);
+        fprintf(stdout, "Output written to: \"%s\"\n", filename_out);
         arena_destroy(life_arena);
         close(fd_in);
         close(fd_out);
