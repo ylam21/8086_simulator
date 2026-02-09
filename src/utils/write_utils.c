@@ -10,7 +10,11 @@ void write_final_regs(Arena *arena, s32 fd, u16 regs[8])
     String8 bp = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"bp", .size = 2}, regs[5], regs[5]);
     String8 si = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"si", .size = 2}, regs[6], regs[6]);
     String8 di = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"di", .size = 2}, regs[7], regs[7]);
-    String8 result = str8_fmt(arena, STR8_LIT("\nFinal Registers:\n%s%s%s%s%s%s%s%s"), ax, bx, cx, dx, sp, bp, si, di);
+    String8 es = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"es", .size = 2}, regs[8], regs[8]);
+    String8 cs = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"cs", .size = 2}, regs[9], regs[9]);
+    String8 ss = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"ss", .size = 2}, regs[10], regs[10]);
+    String8 ds = str8_fmt(arena,STR8_LIT("%7s: 0x%04x (%d)\n"), (String8){.str = (u8 *)"ds", .size = 2}, regs[11], regs[11]);
+    String8 result = str8_fmt(arena, STR8_LIT("\nFinal Registers:\n%s%s%s%s%s%s%s%s%s%s%s%s"), ax, bx, cx, dx, sp, bp, si, di, es, cs, ss, ds);
     write(fd, result.str, result.size);
 }
 

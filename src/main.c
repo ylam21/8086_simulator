@@ -4,7 +4,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static u8 get_reg_idx(String8 reg, String8 regs_names[8]);
+
+#define MASK_WIDE 0
+#define MASK_LOW 1
+#define MASK_HIGH 2
+
+static u8 get_reg_idx_and_set_flag(String8 reg, String8 regs_names[12], u8 *flag);
 
 static u64 get_mnemonic(String8 line, String8 *mnemonic, u64 pos)
 {   
@@ -63,26 +68,89 @@ static u8 str8ncmp(String8 s1, String8 s2, u64 n)
     return 0;
 }
 
-static void modify_dest(String8 mnemonic, u16 *regs, String8 regs_names[8], String8 dest, s64 src_value)
+static u16 mask_val(u16 val, u8 flag)
 {
-    u8 dest_idx = get_reg_idx(dest, regs_names);
-
-    if (str8ncmp(mnemonic, STR8_LIT("mov"), mnemonic.size) == 0)
+    if (flag == MASK_WIDE)
     {
-        regs[dest_idx] = src_value;
+        return val & 0xFFFF;
     }
-    else if (str8ncmp(mnemonic, STR8_LIT("add"), mnemonic.size) == 0)
+    else if (flag == MASK_LOW)
     {
-        regs[dest_idx] += src_value;
+        return val & 0x00FF;
+    }
+    else if (flag == MASK_HIGH)
+    {
+        return (val >> 8) & 0x00FF;
+    }
+    else
+    {
+        fprintf(stderr, "Error: mask flag has garbage value\n");
+        return (u16)-1;
+    }
+} 
+
+static void set_reg_value(u16 *reg, u16 value, u8 flag_dest)
+{
+    if (flag_dest == MASK_WIDE)
+    {
+        *reg = value;
+    }
+    else if (flag_dest == MASK_LOW)
+    {
+        *reg = (*reg & 0xFF00) | (value & 0xFF);
+    }
+    else if (flag_dest == MASK_HIGH)
+    {
+        *reg = (*reg & 0x00FF) | ((value & 0xFF) << 8);
+    }
+    else
+    {
+        fprintf(stderr, "Error: mask flag has garbage value\n");
     }
 }
 
-static u8 get_reg_idx(String8 reg, String8 regs_names[8])
+static void modify_dest(String8 mnemonic, u16 *dest_reg, u8 flag_dest, u16 src)
+{
+    if (str8ncmp(mnemonic, STR8_LIT("mov"), mnemonic.size) == 0)
+    {
+        set_reg_value(dest_reg, src, flag_dest);
+    }
+    else if (str8ncmp(mnemonic, STR8_LIT("add"), mnemonic.size) == 0)
+    {
+        *dest_reg += src;
+    }
+}
+
+static u8 get_reg_idx_and_set_flag(String8 reg, String8 regs_names[12], u8 *flag)
 {
     u8 idx;
 
     idx = 0;
-    while (idx < 8)
+    while (idx < 4)
+    {
+        if (str8ncmp(reg, regs_names[idx], 1) == 0)
+        {
+            u8 c = reg.str[1];
+            if (c == 'x')
+            {
+                *flag = MASK_WIDE; // 16-bit wide
+                return idx;
+            }
+            else if (c == 'l')
+            {
+                *flag = MASK_LOW; // 8-bit low
+                return idx;
+            }
+            else if (c == 'h')
+            {
+                *flag = MASK_HIGH; // 8-bit high
+                return idx;
+            }
+        }
+        idx += 1;
+    }
+
+    while (idx < 12)
     {
         if (str8ncmp(reg, regs_names[idx], reg.size) == 0)
         {
@@ -93,7 +161,7 @@ static u8 get_reg_idx(String8 reg, String8 regs_names[8])
     return -1;
 }
 
-static s16 get_value_from_src(String8 src, u16 *regs, String8 regs_names[8])
+static s16 get_value_from_src(String8 src, u16 *regs, String8 regs_names[12])
 {
     if (src.size == 1)
     {
@@ -101,8 +169,10 @@ static s16 get_value_from_src(String8 src, u16 *regs, String8 regs_names[8])
     }
     else if (src.size == 2 && is_alpha(src.str[0]))
     {
-        u8 idx = get_reg_idx(src, regs_names);
-        return (s16)regs[idx];
+        u8 flag = MASK_WIDE;
+        u8 idx = get_reg_idx_and_set_flag(src, regs_names, &flag);
+        u16 val = mask_val(regs[idx], flag);
+        return (s16)val;
     }
     else if (src.size > 2 && src.str[1] == 'x')
     {   
@@ -114,10 +184,10 @@ static s16 get_value_from_src(String8 src, u16 *regs, String8 regs_names[8])
     }
 }
 
-static void process_line(Arena *arena, u16 *regs, String8 regs_names[8], String8 line, s32 fd)
+static void process_line(Arena *arena, u16 *regs, String8 regs_names[12], String8 line, s32 fd)
 {
-    u16 regs_old[8];
-    memcpy(regs_old, regs, 8 * (sizeof(u16)));
+    u16 regs_old[12];
+    memcpy(regs_old, regs, 12 * (sizeof(u16)));
 
     String8 mnemonic, dest, src;
     u64 pos = 0;
@@ -131,10 +201,11 @@ static void process_line(Arena *arena, u16 *regs, String8 regs_names[8], String8
 
     s16 src_value = get_value_from_src(src, regs, regs_names);
 
-    u8 reg_dest_idx = get_reg_idx(dest, regs_names);
+    u8 flag_dest = MASK_WIDE;
+    u8 reg_dest_idx = get_reg_idx_and_set_flag(dest, regs_names, &flag_dest);
     if (reg_dest_idx != (u8)-1)
     {
-        modify_dest(mnemonic, regs, regs_names, dest, src_value);
+        modify_dest(mnemonic, &regs[reg_dest_idx], flag_dest, src_value);
         write_line(arena, fd, line, dest, regs_old[reg_dest_idx], regs[reg_dest_idx]);
     }
     else
@@ -158,18 +229,22 @@ static void simulate_8086(String8 data, s32 fd)
     Arena *scratch_arena = arena_create(1024 * 1024);
     if (!scratch_arena) return;
 
-    String8 regs_names[8] =
+    String8 regs_names[12] =
     {
-       STR8_LIT("ax"),
-       STR8_LIT("bx"),
+       STR8_LIT("ax"), // General-purpose registers
+       STR8_LIT("bx"), // 'ax' ... 'di'
        STR8_LIT("cx"),
        STR8_LIT("dx"),
        STR8_LIT("sp"),
        STR8_LIT("bp"),
        STR8_LIT("si"),
        STR8_LIT("di"),
+       STR8_LIT("es"), // Segment registers
+       STR8_LIT("cs"), // 'es' ... 'ds'
+       STR8_LIT("ss"),
+       STR8_LIT("ds"),
     };
-    u16 regs[8] = {0}; // Array where we store 8 registers, 16-bit wide each
+    u16 regs[12] = {0}; // Array where we store the state 12 registers, 16-bit wide each
 
     u64 pos = 0;
 
