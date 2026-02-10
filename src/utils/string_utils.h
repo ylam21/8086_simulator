@@ -12,7 +12,7 @@ u8 is_alpha(u8 c);
 u8 is_num(u8 c);
 u8 is_alnum(u8 c);
 
-void write_final_regs(Arena *arena, s32 fd, u16 regs[8]);
-void write_line(Arena *arena, s32 fd, String8 line, String8 dest, u16 reg_start, u16 regs_end);
+void write_final_regs(Arena *arena, s32 fd, u16 regs[14]);
+void write_line(Arena *arena, s32 fd, String8 line, String8 dest, u8 reg_dest_idx, u16 regs_old[14], u16 regs_new[14]);
 
 #endif
