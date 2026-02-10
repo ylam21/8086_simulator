@@ -5,6 +5,9 @@ An 8086 simulator that stores and updates all states of its registers. This prog
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
 All example files provided under the `examples/` folder are sourced from the [computer_enhance github repo](https://github.com/cmuratori/computer_enhance).
 
+## References
+[Intel 8086 Family User's Manual October 1979](https://archive.org/details/bitsavers_intel80869lyUsersManualOct79_62967963/page/n1/mode/2up) [archive.org]<br>
+
 ## Usage
 
 ### Compilation
