@@ -105,6 +105,42 @@ static void set_reg_value(u16 *reg, u16 val, u8 flag_dest)
     }
 }
 
+static void set_SF(u16 *reg, u16 val, u8 width_bit)
+{
+    if ((val >> width_bit) & 1)
+    {
+        *reg |= (1 << POS_SF);
+    }
+    else
+    {
+        *reg &= ~(1 << POS_SF);
+    }
+}
+
+static void set_CF(u16 *reg, u32 res, u32 mask)
+{
+    if (res > mask)
+    {
+        *reg |= (1 << POS_CF);
+    }
+    else
+    {
+        *reg &= ~(1 << POS_CF);
+    }
+}
+
+static void set_ZF(u16 *reg, u16 val)
+{
+    if (val == 0)
+    {
+        *reg |= (1 << POS_ZF);
+    }
+    else
+    {
+        *reg &= ~(1 << POS_ZF);
+    }
+}
+
 static void set_PF(u16 *reg, u16 val)
 {
     u8 cnt = 0;
@@ -117,69 +153,123 @@ static void set_PF(u16 *reg, u16 val)
 
     if (cnt % 2 == 0)
     {
-        // val has even parity
-        *reg = *reg | (1 << POS_PF);
+        *reg |= (1 << POS_PF);
     }
     else
     {
-        *reg = *reg & ~(1 << POS_PF);
+        *reg &= ~(1 << POS_PF);
     }
 }
 
-static void set_ZF(u16 *reg, u16 val)
+static void set_OF_add(u16 *reg, u16 a, u16 b, u16 result, u8 width_bit)
 {
-    if (val == 0)
+    u16 sign_a = (a >> width_bit) & 1;
+    u16 sign_b = (b >> width_bit) & 1;
+    u16 sign_r = (result >> width_bit) & 1;
+
+    if ((sign_a == sign_b) && (sign_a != sign_r))
     {
-        // val is equal to zero
-        *reg = *reg | (1 << POS_ZF);
+        *reg |= (1 << POS_OF);
     }
     else
     {
-        *reg = *reg & ~(1 << POS_ZF);
+        *reg &= ~(1 << POS_OF);
     }
 }
 
-static void set_SF(u16 *reg, u16 val)
+static void set_OF_sub(u16 *reg, u16 a, u16 b, u16 result, u8 width_bit)
 {
-    if ((val >> 15) & 1)
+    u16 sign_a = (a >> width_bit) & 1;
+    u16 sign_b = (b >> width_bit) & 1;
+    u16 sign_r = (result >> width_bit) & 1;
+
+    if ((sign_a != sign_b) && (sign_a != sign_r))
     {
-        // val has the MSB equal to 1
-        *reg = *reg | (1 << POS_SF);
+        *reg |= (1 << POS_OF);
     }
     else
     {
-        *reg = *reg & ~(1 << POS_SF);
+        *reg &= ~(1 << POS_OF);
+    }
+}
+
+static u8 get_width_bit(u8 flag_dest)
+{
+    if (flag_dest == MASK_WIDE)
+    {
+        return 15;
+    }
+    else
+    {
+        return 7;
+    }
+}
+
+static u16 get_mask(u8 flag_dest)
+{
+    if (flag_dest == MASK_WIDE)
+    {
+        return 0xFFFF;
+    }
+    else
+    {
+        return 0x00FF;
     }
 }
 
 static void modify_dest(u16 *flags_reg, String8 mnemonic, u16 *dest_reg, u8 flag_dest, u16 src)
 {
+    u8 width_bit = get_width_bit(flag_dest);
+    u16 mask     = get_mask(flag_dest);
+
+    u16 val_dest;
+    if (flag_dest == MASK_WIDE)
+    {
+        val_dest = *dest_reg;
+    }
+    else if (flag_dest == MASK_HIGH)
+    {
+        val_dest = *dest_reg >> 8;
+    }
+    else
+    {
+        val_dest = *dest_reg & 0x00FF;
+    }
+    
+    u16 val_src  = src & mask; 
+    u16 result   = 0;
     if (str8ncmp(mnemonic, STR8_LIT("mov"), mnemonic.size) == 0)
     {
         set_reg_value(dest_reg, src, flag_dest);
     }
     else if (str8ncmp(mnemonic, STR8_LIT("add"), mnemonic.size) == 0)
     {
-        u16 result = *dest_reg + src;
+        u32 temp_res = (u32)val_dest + (u32)val_src;
+        result = temp_res & mask;
+
+        set_OF_add(flags_reg, val_dest, val_src, result, width_bit);
+        set_CF(flags_reg, temp_res, mask);
         set_ZF(flags_reg, result);
-        set_SF(flags_reg, result);
+        set_SF(flags_reg, result, width_bit);
         set_PF(flags_reg, result);
         set_reg_value(dest_reg, result, flag_dest);
     }
-    else if (str8ncmp(mnemonic, STR8_LIT("cmp"), mnemonic.size) == 0)
+    else if (str8ncmp(mnemonic, STR8_LIT("sub"), mnemonic.size) == 0 ||
+             str8ncmp(mnemonic, STR8_LIT("cmp"), mnemonic.size) == 0)
     {
-        u16 result = *dest_reg - src;
+        u32 temp_res = (u32)val_dest - (u32)val_src;
+        result = temp_res & mask;
+
+        set_OF_sub(flags_reg, val_dest, val_src, result, width_bit);
+        set_CF(flags_reg, temp_res, mask);
         set_ZF(flags_reg, result);
-        set_SF(flags_reg, result);
+        set_SF(flags_reg, result, width_bit);
         set_PF(flags_reg, result);
-    } 
-    else if (str8ncmp(mnemonic, STR8_LIT("sub"), mnemonic.size) == 0)
-    {
-        u16 result = *dest_reg - src;
-        set_ZF(flags_reg, result);
-        set_SF(flags_reg, result);
-        set_PF(flags_reg, result);
-        set_reg_value(dest_reg, result, flag_dest);
+
+        if (str8ncmp(mnemonic, STR8_LIT("sub"), mnemonic.size) == 0)
+        {
+            set_reg_value(dest_reg, result, flag_dest);
+        }
     }
 }
 
