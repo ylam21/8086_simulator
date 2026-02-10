@@ -11,7 +11,7 @@
 #define MASK_LOW 1
 #define MASK_HIGH 2
 
-#define POS_CF 0  // carry status flag 
+#define POS_CF 0  // carry status flag ; 'POS' stands for position in its register
 #define POS_PF 2  // parity status flag
 #define POS_AF 4  // auxiliary status flag
 #define POS_ZF 6  // zero status flag

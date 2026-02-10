@@ -105,21 +105,41 @@ static void set_reg_value(u16 *reg, u16 val, u8 flag_dest)
     }
 }
 
-
-static void set_zf(u16 *reg, u16 val)
+static void set_PF(u16 *reg, u16 val)
 {
-    if (val)
+    u8 cnt = 0;
+    u8 idx = 0;
+    while (idx < 8)
     {
-        *reg = *reg & ~(1 << POS_ZF);
+        cnt += (val >> idx) & 1;
+        idx += 1;
+    }
+
+    if (cnt % 2 == 0)
+    {
+        // val has even parity
+        *reg = *reg | (1 << POS_PF);
     }
     else
+    {
+        *reg = *reg & ~(1 << POS_PF);
+    }
+}
+
+static void set_ZF(u16 *reg, u16 val)
+{
+    if (val == 0)
     {
         // val is equal to zero
         *reg = *reg | (1 << POS_ZF);
     }
+    else
+    {
+        *reg = *reg & ~(1 << POS_ZF);
+    }
 }
 
-static void set_sf(u16 *reg, u16 val)
+static void set_SF(u16 *reg, u16 val)
 {
     if ((val >> 15) & 1)
     {
@@ -141,21 +161,24 @@ static void modify_dest(u16 *flags_reg, String8 mnemonic, u16 *dest_reg, u8 flag
     else if (str8ncmp(mnemonic, STR8_LIT("add"), mnemonic.size) == 0)
     {
         u16 result = *dest_reg + src;
-        set_zf(flags_reg, result);
-        set_sf(flags_reg, result);
+        set_ZF(flags_reg, result);
+        set_SF(flags_reg, result);
+        set_PF(flags_reg, result);
         set_reg_value(dest_reg, result, flag_dest);
     }
     else if (str8ncmp(mnemonic, STR8_LIT("cmp"), mnemonic.size) == 0)
     {
         u16 result = *dest_reg - src;
-        set_zf(flags_reg, result);
-        set_sf(flags_reg, result);
+        set_ZF(flags_reg, result);
+        set_SF(flags_reg, result);
+        set_PF(flags_reg, result);
     } 
     else if (str8ncmp(mnemonic, STR8_LIT("sub"), mnemonic.size) == 0)
     {
         u16 result = *dest_reg - src;
-        set_zf(flags_reg, result);
-        set_sf(flags_reg, result);
+        set_ZF(flags_reg, result);
+        set_SF(flags_reg, result);
+        set_PF(flags_reg, result);
         set_reg_value(dest_reg, result, flag_dest);
     }
 }
