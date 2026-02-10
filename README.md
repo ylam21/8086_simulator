@@ -1,5 +1,5 @@
 # 8086 Simulator
-An 8086 simulator that stores and updates all states of its registers. This program processes an `.asm` input file and annotates every line with the state change of the destination register. It also outputs the final state of all registers.
+An 8086 simulator that stores and updates all states of its registers. This program processes an `.asm` input file and annotates every line with the state change of the destination register and the state change of flag register. It also outputs the final state of all registers.
 
 ## Context
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
@@ -25,14 +25,14 @@ bin/simulate8086 examples/listing_0043_immediate_movs.asm
 ```
 *(Example output)*<br>
 ```asm
-mov ax, 1      ; ax: 0x0000->0x0001
-mov bx, 2      ; bx: 0x0000->0x0002
-mov cx, 3      ; cx: 0x0000->0x0003
-mov dx, 4      ; dx: 0x0000->0x0004
-mov sp, 5      ; sp: 0x0000->0x0005
-mov bp, 6      ; bp: 0x0000->0x0006
-mov si, 7      ; si: 0x0000->0x0007
-mov di, 8      ; di: 0x0000->0x0008
+mov ax, 1      ; ax: 0x0000->0x0001 [         ]->[         ]
+mov bx, 2      ; bx: 0x0000->0x0002 [         ]->[         ]
+mov cx, 3      ; cx: 0x0000->0x0003 [         ]->[         ]
+mov dx, 4      ; dx: 0x0000->0x0004 [         ]->[         ]
+mov sp, 5      ; sp: 0x0000->0x0005 [         ]->[         ]
+mov bp, 6      ; bp: 0x0000->0x0006 [         ]->[         ]
+mov si, 7      ; si: 0x0000->0x0007 [         ]->[         ]
+mov di, 8      ; di: 0x0000->0x0008 [         ]->[         ]
 
 Final Registers:
      ax: 0x0001 (1)
@@ -47,4 +47,5 @@ Final Registers:
      cs: 0x0000 (0)
      ss: 0x0000 (0)
      ds: 0x0000 (0)
+     [         ]
 ```
