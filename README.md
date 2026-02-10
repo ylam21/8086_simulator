@@ -49,3 +49,33 @@ Final Registers:
      ds: 0x0000 (0)
      [         ]
 ```
+*(Example input)*<br>
+```sh
+bin/simulate8086 examples/listing_0046_add_sub_cmp.asm
+```
+*(Example output)*<br>
+```asm
+mov bx, -4093  ; bx: 0x0000->0xfe67 [         ]->[         ]
+mov cx, 3841   ; cx: 0x0000->0x0f01 [         ]->[         ]
+sub bx, cx     ; bx: 0xfe67->0xef66 [         ]->[    S  P ]
+mov sp, 998    ; sp: 0x0000->0x03e6 [    S  P ]->[    S  P ]
+mov bp, 999    ; bp: 0x0000->0x03e7 [    S  P ]->[    S  P ]
+cmp bp, sp     ; bp: 0x03e7->0x03e7 [    S  P ]->[         ]
+add bp, 1027   ; bp: 0x03e7->0x07ea [         ]->[         ]
+sub bp, 2026   ; bp: 0x07ea->0x0000 [         ]->[     Z P ]
+
+Final Registers:
+     ax: 0x0000 (0)
+     bx: 0xef66 (61286)
+     cx: 0x0f01 (3841)
+     dx: 0x0000 (0)
+     sp: 0x03e6 (998)
+     bp: 0x0000 (0)
+     si: 0x0000 (0)
+     di: 0x0000 (0)
+     es: 0x0000 (0)
+     cs: 0x0000 (0)
+     ss: 0x0000 (0)
+     ds: 0x0000 (0)
+     [     Z P ]
+```
