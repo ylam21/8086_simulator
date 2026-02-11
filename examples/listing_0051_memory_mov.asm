@@ -11,26 +11,20 @@
 ; ========================================================================
 
 ; ========================================================================
-; LISTING 47
+; LISTING 51
 ; ========================================================================
 
 bits 16
 
-add bx, 30000
-add bx, 10000
-sub bx, 5000
-sub bx, 5000
+mov word [1000], 1
+mov word [1002], 2
+mov word [1004], 3
+mov word [1006], 4
 
-mov bx, 1
-mov cx, 100
-add bx, cx
+mov bx, 1000
+mov word [bx + 4], 10
 
-mov dx, 10
-sub cx, dx
-
-add bx, 40000
-add cx, -90
-
-mov sp, 99
-mov bp, 98
-cmp bp, sp
+mov bx, word [1000]
+mov cx, word [1002]
+mov dx, word [1004]
+mov bp, word [1006]

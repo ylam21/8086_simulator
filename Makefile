@@ -1,7 +1,7 @@
 NAME        := simulate8086
 CC          := gcc
 
-SRC_DIR     := src
+SRC_DIR     := src_new
 BUILD_DIR   := build
 BIN_DIR     := bin
 

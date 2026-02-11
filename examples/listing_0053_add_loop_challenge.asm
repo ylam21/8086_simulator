@@ -11,26 +11,25 @@
 ; ========================================================================
 
 ; ========================================================================
-; LISTING 47
+; LISTING 53
 ; ========================================================================
 
 bits 16
 
-add bx, 30000
-add bx, 10000
-sub bx, 5000
-sub bx, 5000
+mov dx, 6
+mov bp, 1000
 
-mov bx, 1
-mov cx, 100
-add bx, cx
+mov si, 0
+init_loop_start:
+	mov word [bp + si], si
+	add si, 2
+	cmp si, dx
+	jnz init_loop_start
 
-mov dx, 10
-sub cx, dx
-
-add bx, 40000
-add cx, -90
-
-mov sp, 99
-mov bp, 98
-cmp bp, sp
+mov bx, 0
+mov si, dx
+sub bp, 2
+add_loop_start:
+	add bx, word [bp + si]
+	sub si, 2
+	jnz add_loop_start

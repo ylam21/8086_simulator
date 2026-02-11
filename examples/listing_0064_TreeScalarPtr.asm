@@ -11,26 +11,39 @@
 ; ========================================================================
 
 ; ========================================================================
-; LISTING 47
+; LISTING 64
 ; ========================================================================
 
 bits 16
 
-add bx, 30000
-add bx, 10000
-sub bx, 5000
-sub bx, 5000
+mov     di, 8      ; Count
+mov     bp, 1000   ; Input
+mov     byte [bp + 0], 9  ; Fake input
+mov     byte [bp + 1], 17
+mov     byte [bp + 2], 23
+mov     byte [bp + 3], 4
+mov     byte [bp + 4], 27
+mov     byte [bp + 5], 41
+mov     byte [bp + 6], 39
+mov     byte [bp + 7], 31
 
-mov bx, 1
-mov cx, 100
-add bx, cx
+; Lightly modified from CLANG:
 
-mov dx, 10
-sub cx, dx
+xor     ax, ax
+cmp     di, 4
+jb      .LBB6_3
+shr     di, 1
+shr     di, 1
+xor     ax, ax
 
-add bx, 40000
-add cx, -90
-
-mov sp, 99
-mov bp, 98
-cmp bp, sp
+.LBB6_2:
+	add     al, byte [bp]
+	add     al, byte [bp + 1]
+	add     al, byte [bp + 2]
+	add     al, byte [bp + 3]
+	add     bp, 4
+	dec     di
+	jne     .LBB6_2
+		
+.LBB6_3:
+	ret

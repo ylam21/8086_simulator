@@ -11,26 +11,33 @@
 ; ========================================================================
 
 ; ========================================================================
-; LISTING 47
+; LISTING 54
 ; ========================================================================
 
 bits 16
 
-add bx, 30000
-add bx, 10000
-sub bx, 5000
-sub bx, 5000
+; Start image after one row, to avoid overwriting our code!
+mov bp, 64*4
 
-mov bx, 1
-mov cx, 100
-add bx, cx
-
-mov dx, 10
-sub cx, dx
-
-add bx, 40000
-add cx, -90
-
-mov sp, 99
-mov bp, 98
-cmp bp, sp
+mov dx, 0
+y_loop_start:
+	
+	mov cx, 0
+	x_loop_start:
+		; Fill pixel
+		mov word [bp + 0], cx ; Red
+		mov word [bp + 2], dx ; Blue
+		mov byte [bp + 3], 255 ; Alpha
+			
+		; Advance pixel location
+		add bp, 4
+			
+		; Advance X coordinate and loop
+		add cx, 1
+		cmp cx, 64
+		jnz x_loop_start
+	
+	; Advance Y coordinate and loop
+	add dx, 1
+	cmp dx, 64
+	jnz y_loop_start

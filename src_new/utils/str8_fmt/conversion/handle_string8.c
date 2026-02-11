@@ -10,7 +10,7 @@ void handle_string8(Arena *arena, va_list args, t_fmt_opt opt)
     }
 
     u8 buffer[16]; // NOTE: In theory only 3 bytes of memory is needed to allocate 
-    if (opt.is_conditional)
+    if (opt.is_conditional && s.size > 0)
     {
         memcpy(buffer, s.str, s.size);
         buffer[s.size] = ':';

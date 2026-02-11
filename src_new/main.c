@@ -36,6 +36,7 @@ int main(int argc, char **argv)
     close(fd_in);
     if (read_bytes == -1)
     {
+        fprintf(stderr, "Error: Cannot read from %s\n", filename);
         return (EXIT_FAILURE);
     }
 
@@ -90,7 +91,7 @@ int main(int argc, char **argv)
         {
             i += offset;
             ctx.current_ip += offset;
-            arena_reset(ctx.a);
+            arena_reset(ctx.arena);
             if (!is_prefix)
             {
                 ctx.seg_prefix = 0xFF;

@@ -11,26 +11,32 @@
 ; ========================================================================
 
 ; ========================================================================
-; LISTING 47
+; LISTING 57
 ; ========================================================================
 
 bits 16
 
-add bx, 30000
-add bx, 10000
-sub bx, 5000
-sub bx, 5000
+mov bx, 1000
+mov bp, 2000
+mov si, 3000
+mov di, 4000
 
-mov bx, 1
-mov cx, 100
-add bx, cx
+mov cx, [bp + di]
+mov [bx + si], cx
 
-mov dx, 10
-sub cx, dx
+mov cx, [bp + si]
+mov [bx + di], cx
 
-add bx, 40000
-add cx, -90
+mov cx, [bp + di + 1000]
+mov [bx + si + 1000], cx
 
-mov sp, 99
-mov bp, 98
-cmp bp, sp
+mov cx, [bp + si + 1000]
+mov [bx + di + 1000], cx
+
+add dx, [bp + si + 1000]
+
+add word [bp + si], 76
+
+add dx, [bp + si + 1001]
+add [di + 999], dx
+add word [bp + si], 75

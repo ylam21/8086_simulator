@@ -84,14 +84,14 @@ static String8 decode_rm(t_ctx *ctx, u8 RM, u8 MOD, u8 W)
     else if (MOD == 0b01)
     {
         /* Memory Mode, 8-bit displacement follows */
-        s8 disp = (s8)ctx->b[2];
+        u8 disp = (s8)ctx->b[2];
         return str8_fmt(ctx->arena, STR8_LIT("%?s[%s + %d]"), prefix, base, disp);
     }
     else if (MOD == 0b10)
     {
         /* Memory Mode, 16-bit displacement follows */
         u16 disp = ctx->b[2] | (ctx->b[3] << 8);
-        return str8_fmt(ctx->arena, STR8_LIT("%?s[%s + %u]"), prefix, base, disp);
+        return str8_fmt(ctx->arena, STR8_LIT("%?s[%s + %d]"), prefix, base, disp);
     }
     else
     {
@@ -148,6 +148,7 @@ static String8 decode_imm_to_reg(t_ctx *ctx, u8 W, u8 data_lo, u8 data_hi)
 
 u8 opcode_not_used(t_ctx *ctx)
 {
+    (void)ctx;
     return 1;
 }
 
@@ -1005,7 +1006,7 @@ u8 fmt_jmp_far(t_ctx *ctx)
     u16 offset = ctx->b[1] | (ctx->b[2] << 8);
     u16 segment = ctx->b[3] | (ctx->b[4] << 8);
 
-    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%04X0x%04X"), segment, offset);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%04X:0x%04X"), segment, offset);
     write_fmt_line(ctx, STR8_LIT("jmp"), operands);
 
     return 5; 
