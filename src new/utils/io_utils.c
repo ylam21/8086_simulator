@@ -1,14 +1,14 @@
 #include "io_utils.h"
 
-void write_fmt_line_no_operands(t_ctx *ctx, u8 *mnemonic)
+void write_fmt_line_no_operands(t_ctx *ctx, String8 mnemonic)
 {
-    u8 *line = strjoin_fmt(ctx->a, "%-7s\n", mnemonic);
-    write(ctx->fd, line, strlen(line));
+    String8 line = str8_fmt(ctx->arena, STR8_LIT("%-7s\n"), mnemonic);
+    write(ctx->fd, line.str, line.size);
 }
 
-void write_fmt_line(t_ctx *ctx, u8 *mnemonic, u8 *operands)
+void write_fmt_line(t_ctx *ctx, String8 mnemonic, String8 operands)
 {
-    u8 *line = strjoin_fmt(ctx->a, "%-7s %s\n", mnemonic, operands);
-    write(ctx->fd, line, strlen(line));
+    String8 line = str8_fmt(ctx->arena, STR8_LIT("%-7s %s\n"), mnemonic, operands);
+    write(ctx->fd, line.str, line.size);
 }
 

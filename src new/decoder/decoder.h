@@ -6,6 +6,10 @@
 #include "opcodes.h"
 #include "../utils/io_utils.h"
 
+#define GET_MOD(b) (((b) >> 6) & 0x3)
+#define GET_REG(b) (((b) >> 3) & 0x7)
+#define GET_RM(b)  ((b) & 0x7)
+
 u8 opcode_not_used(t_ctx *ctx);
 u8 fmt_modrm_common(t_ctx *ctx);
 u8 fmt_imm_to_acc(t_ctx *ctx);
