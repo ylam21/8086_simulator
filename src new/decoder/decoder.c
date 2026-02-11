@@ -668,22 +668,21 @@ u8 handle_ret(t_ctx *ctx)
     
     u8 is_far = (opcode >> 3) & 1;
     
-    u8 *mnemonic;
-    if (is_far == 0x0)
+    String8 mnemonic;
+    if (is_far == 0)
     {
-        mnemonic = "ret";
+        mnemonic = STR8_LIT("ret");
     }
     else
     {
-        mnemonic = "retf";
+        mnemonic = STR8_LIT("retf");
     }
 
     u8 has_imm = !(opcode & 1); 
-
     if (has_imm)
     {
         u16 val = ctx->b[1] | (ctx->b[2] << 8);
-        u8 *imm_str = strjoin_fmt(ctx->arena, "0x%04X", val);
+        String8 imm_str = str8_fmt(ctx->arena, STR8_LIT("0x%04X"), val);
         write_fmt_line(ctx, mnemonic, imm_str);
         return 3;
     }
@@ -696,24 +695,24 @@ u8 handle_ret(t_ctx *ctx)
 
 u8 fmt_les_lds_mem16_to_reg16(t_ctx *ctx)
 {
+    u8 opcode = ctx->b[0];
     u8 W = 1;
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
 
-    u8 MOD = (ctx->b[1] >> 6) & 0x3; 
-    u8 REG = (ctx->b[1] >> 3) & 0x7;
-    u8 RM = ctx->b[1] & 0x7;
+    String8 field_RM = decode_rm(ctx, RM, MOD, W);
+    String8 field_REG = decode_reg(REG, W);
 
-    u8 *field_RM = decode_rm(ctx, RM, MOD, W);
-    u8 *field_REG = decode_reg(REG, W);
-
-    u8 *operands = strjoin_fmt(ctx->arena, "%s, %s", field_REG, field_RM);
-    u8 idx = ctx->b[0] & 1;
-    if (idx == 0x0)
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_REG, field_RM);
+    u8 idx = opcode & 1;
+    if (idx == 0)
     {
-        write_fmt_line(ctx, "les", operands);
+        write_fmt_line(ctx, STR8_LIT("les"), operands);
     }
     else
     {
-        write_fmt_line(ctx, "lds", operands);
+        write_fmt_line(ctx, STR8_LIT("lds"), operands);
     }
 
     return match_MODRM_with_offset(MOD, RM);
@@ -722,31 +721,31 @@ u8 fmt_les_lds_mem16_to_reg16(t_ctx *ctx)
 u8 fmt_mov_imm_to_mem(t_ctx *ctx)
 {
     u8 opcode = ctx->b[0];
-    u8 W = ctx->b[0] & 1;
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 RM = ctx->b[1] & 0x7;
+    u8 W = opcode & 1;
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
 
-    u8* field_rm = decode_rm(ctx, RM, MOD, W);
+    String8 field_rm = decode_rm(ctx, RM, MOD, W);
 
     u8 current_len = match_MODRM_with_offset(MOD, RM);
     u8 *imm_ptr = &ctx->b[current_len];
 
-    u8 *field_imm = decode_immediate(ctx, 0, W, imm_ptr); 
+    String8 field_imm = decode_immediate(ctx, 0, W, imm_ptr); 
 
-    if (MOD != 0x3)    
+    if (MOD != 0b11)    
     {
-        if (W == 0x0)
+        if (W == 0)
         {
-            field_rm = strjoin_fmt(ctx->arena,"%s %s", "byte", field_rm);
+            field_rm = str8_fmt(ctx->arena, STR8_LIT("%s %s"), STR8_LIT("byte"), field_rm);
         }
         else
         {
-            field_rm = strjoin_fmt(ctx->arena,"%s %s", "word", field_rm);
+            field_rm = str8_fmt(ctx->arena, STR8_LIT("%s %s"), STR8_LIT("word"), field_rm);
         }
     }
 
-    u8 *operands = strjoin_fmt(ctx->arena, "%s, %s", field_rm, field_imm);
-    write_fmt_line(ctx, "mov", operands);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_rm, field_imm);
+    write_fmt_line(ctx, STR8_LIT("mov"), operands);
 
     u8 imm_len;
     if (W == 1)
@@ -763,20 +762,27 @@ u8 fmt_mov_imm_to_mem(t_ctx *ctx)
 
 u8 handle_interrupt(t_ctx *ctx)
 {
-    u8 opcode = ctx->b[0];
-    u8 *mnemonics[4] = {"int", "int", "into", "iret"};
-    u8 idx = ctx->b[0] & 0x3;
-
-    u8 *field_IMM;
-    if (idx == 0x0)
+    String8 mnemonics[4] =
     {
-        field_IMM = strjoin_fmt(ctx->arena, "%u", 3);
+        STR8_LIT("int"),
+        STR8_LIT("int"),
+        STR8_LIT("into"), 
+        STR8_LIT("iret"),
+    };
+
+    u8 opcode = ctx->b[0];
+    u8 idx = opcode & 0x3;
+
+    String8 field_IMM;
+    if (idx == 0)
+    {
+        field_IMM = str8_fmt(ctx->arena, STR8_LIT("%u"), 3);
         write_fmt_line(ctx, mnemonics[idx], field_IMM);
         return 1;
     }
     else if (idx == 1)
     {
-        field_IMM = strjoin_fmt(ctx->arena, "0x%02X", ctx->b[1]);
+        field_IMM = str8_fmt(ctx->arena, STR8_LIT("0x%02X"), ctx->b[1]);
         write_fmt_line(ctx,mnemonics[idx], field_IMM);
         return 2;
     }
@@ -789,25 +795,34 @@ u8 handle_interrupt(t_ctx *ctx)
 
 u8 fmt_rol_ror_rcl_rcr_sal_shr_sar(t_ctx *ctx)
 {
-    u8 *mnemonics[8] = {"rol", "ror", "rcl", "rcr", "sal", "shr","", "sar"};
+    String8 mnemonics[8] = 
+    {
+        STR8_LIT("rol"),
+        STR8_LIT("ror"),
+        STR8_LIT("rcl"),
+        STR8_LIT("rcr"),
+        STR8_LIT("sal"), 
+        STR8_LIT("shr"), 
+        STR8_LIT(""), 
+        STR8_LIT("sar"),
+    };
 
     u8 opcode = ctx->b[0];
-    u8 W = ctx->b[0] & 1;
-    u8 V = (ctx->b[0] >> 1) & 1;
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 REG = (ctx->b[1] >> 3) & 0x7;
-    u8 RM = ctx->b[1] & 0x7;
+    u8 W = opcode & 1;
+    u8 V = (opcode >> 1) & 1;
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
+    String8 field_RM = decode_rm(ctx, RM, MOD, W);
 
-    u8 *field_RM = decode_rm(ctx, RM, MOD, W);
-
-    u8 *operands;
-    if (V == 0x0)
+    String8 operands;
+    if (V == 0)
     {
-        operands = strjoin_fmt(ctx->arena, "%s, %u", field_RM, 1u);
+        operands = str8_fmt(ctx->arena, STR8_LIT("%s, %u"), field_RM, 1u);
     }
     else
     {
-        operands = strjoin_fmt(ctx->arena, "%s, cl", field_RM);
+        operands = str8_fmt(ctx->arena, STR8_LIT("%s, cl"), field_RM);
     }
 
     write_fmt_line(ctx, mnemonics[REG], operands);
@@ -821,22 +836,22 @@ u8 handle_aam_aad_xlat(t_ctx *ctx)
 
     if (opcode == 0xD7)
     {
-        write_fmt_line_no_operands(ctx, "xlat");
+        write_fmt_line_no_operands(ctx, STR8_LIT("xlat"));
         return 1;
     }
 
-    u8 *mnemonic;
+    String8 mnemonic;
     if (opcode == 0xD4)
     {
-        mnemonic = "aam";
+        mnemonic = STR8_LIT("aam");
     }
     else
     {
-        mnemonic = "aad";
+        mnemonic = STR8_LIT("aad");
     }
 
     u8 imm = ctx->b[1];
-    u8 *operands = strjoin_fmt(ctx->arena, "0x%02X", imm);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%02X"), imm);
     
     write_fmt_line(ctx, mnemonic, operands);
 
@@ -845,30 +860,38 @@ u8 handle_aam_aad_xlat(t_ctx *ctx)
 
 u8 fmt_esc(t_ctx *ctx)
 {
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 RM  = ctx->b[1] & 0x7;
-    u8 REG = (ctx->b[1] >> 3) & 0x7;
+    u8 opcode = ctx->b[0];
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
 
-    u8 ext_opcode = ((ctx->b[0] & 0x7) << 3) | REG;
+    u8 ext_opcode = ((opcode & 0x7) << 3) | REG;
 
-    u8 *rm_field = decode_rm(ctx, RM, MOD, 1);
+    String8 rm_field = decode_rm(ctx, RM, MOD, 1);
 
-    u8 *operands = strjoin_fmt(ctx->arena, "0x%02X, %s", ext_opcode, rm_field);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%02X, %s"), ext_opcode, rm_field);
     
-    write_fmt_line(ctx, "esc", operands);
+    write_fmt_line(ctx, STR8_LIT("esc"), operands);
 
     return match_MODRM_with_offset(MOD, RM);
 }
 
 u8 fmt_loops(t_ctx *ctx)
 {
-    u8 opcode = ctx->b[0];
-    u8 *mnemonics[4] = {"loopne", "loope", "loop", "jcxz"};
-    u8 idx = ctx->b[0] & 0x3;
+    String8 mnemonics[4] =
+    {
+        STR8_LIT("loopne"),
+        STR8_LIT("loope"),
+        STR8_LIT("loop"), 
+        STR8_LIT("jcxz"),
+    };
 
+    u8 opcode = ctx->b[0];
+    u8 idx = opcode & 0x3;
+    
     s8 disp = (s8)ctx->b[1];
     u16 target = (u16)(ctx->current_ip + 2 + disp);
-    u8 *operands = strjoin_fmt(ctx->arena, "0x%04X", target);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%04X"), target);
     
     write_fmt_line(ctx, mnemonics[idx], operands);
 
@@ -877,13 +900,18 @@ u8 fmt_loops(t_ctx *ctx)
 
 u8 fmt_in_out_dx_to_acc(t_ctx *ctx)
 {
-    u8 *mnemonics[2] = {"in", "out"};
-    u8 is_out = (ctx->b[0] >> 1) & 1;    
-
+    String8 mnemonics[2] =
+    {
+        STR8_LIT("in"),
+        STR8_LIT("out"),
+    };
+    
     u8 opcode = ctx->b[0];
-    u8 W = ctx->b[0] & 1;
+    u8 W = opcode & 1;
+    u8 is_out = (opcode >> 1) & 1;    
+
     String8 field_REG;
-    if (W == 0x0)
+    if (W == 0)
     {
         field_REG = ACC_BYTE;
     }
@@ -892,14 +920,14 @@ u8 fmt_in_out_dx_to_acc(t_ctx *ctx)
         field_REG = ACC_WORD;
     }
 
-    u8 *operands;
+    String8 operands;
     if (is_out)
     {
-        operands = strjoin_fmt(ctx->arena, "dx, %s", field_REG);
+        operands = str8_fmt(ctx->arena, STR8_LIT("dx, %s"), field_REG);
     }
     else
     {
-        operands = strjoin_fmt(ctx->arena, "%s, dx", field_REG);
+        operands = str8_fmt(ctx->arena, STR8_LIT("%s, dx"), field_REG);
     }
 
     write_fmt_line(ctx, mnemonics[is_out], operands);
@@ -914,7 +942,7 @@ u8 fmt_in_out_imm8_to_acc(t_ctx *ctx)
     u8 is_out = (opcode >> 1) & 1; 
 
     String8 acc_str;
-    if (W == 0x0)    
+    if (W == 0)    
     {
         acc_str = ACC_BYTE;
     }
@@ -923,18 +951,18 @@ u8 fmt_in_out_imm8_to_acc(t_ctx *ctx)
         acc_str = ACC_WORD;
     }
 
-    u8 *port_str = strjoin_fmt(ctx->arena, "0x%02X", ctx->b[1]);
+    String8 port_str = str8_fmt(ctx->arena, STR8_LIT("0x%02X"), ctx->b[1]);
     
-    u8 *operands;
+    String8 operands;
     if (is_out)
     {
-        operands = strjoin_fmt(ctx->arena, "%s, %s", port_str, acc_str);
-        write_fmt_line(ctx, "out", operands);
+        operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), port_str, acc_str);
+        write_fmt_line(ctx, STR8_LIT("out"), operands);
     }
     else
     {
-        operands = strjoin_fmt(ctx->arena, "%s, %s", acc_str, port_str);
-        write_fmt_line(ctx, "in", operands);
+        operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), acc_str, port_str);
+        write_fmt_line(ctx, STR8_LIT("in"), operands);
     }
 
     return 2;
@@ -942,9 +970,10 @@ u8 fmt_in_out_imm8_to_acc(t_ctx *ctx)
 
 u8 fmt_call_jmp_rel(t_ctx *ctx)
 {
+    String8 mnemonic = STR8_LIT("jmp");
+
     u8 opcode = ctx->b[0];
     
-    u8 *mnemonic = "jmp";
     u8 len;
     s32 displacement;
 
@@ -957,7 +986,7 @@ u8 fmt_call_jmp_rel(t_ctx *ctx)
     {
         if (opcode == 0xE8)
         {
-            mnemonic = "call";
+            mnemonic = STR8_LIT("call");
         } 
         len = 3;
         displacement = (s16)(ctx->b[1] | (ctx->b[2] << 8));
@@ -965,7 +994,7 @@ u8 fmt_call_jmp_rel(t_ctx *ctx)
 
     u16 target = (u16)(ctx->current_ip + len + displacement);
 
-    u8 *operands = strjoin_fmt(ctx->arena, "0x%04X", target);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%04X"), target);
     write_fmt_line(ctx, mnemonic, operands);
 
     return len;
@@ -976,14 +1005,32 @@ u8 fmt_jmp_far(t_ctx *ctx)
     u16 offset = ctx->b[1] | (ctx->b[2] << 8);
     u16 segment = ctx->b[3] | (ctx->b[4] << 8);
 
-    u8 *operands = strjoin_fmt(ctx->arena, "0x%04X0x%04X", segment, offset);
-    write_fmt_line(ctx, "jmp", operands);
+    String8 operands = str8_fmt(ctx->arena, STR8_LIT("0x%04X0x%04X"), segment, offset);
+    write_fmt_line(ctx, STR8_LIT("jmp"), operands);
 
     return 5; 
 }
 
 u8 handle_lock_repne_rep_hlt_cmc_clc_stc_cli_sti_cld_std(t_ctx *ctx)
 {
+    String8 mnemonics[14] = 
+    {
+        STR8_LIT("lock"),
+        STR8_LIT(""),
+        STR8_LIT("repne"),
+        STR8_LIT("rep"),
+        STR8_LIT("htl"),
+        STR8_LIT("cmc"),
+        STR8_LIT(""),
+        STR8_LIT(""),
+        STR8_LIT("clc"), 
+        STR8_LIT("stc"), 
+        STR8_LIT("cli"), 
+        STR8_LIT("sti"),
+        STR8_LIT("cld"),
+        STR8_LIT("std"),
+    };
+
     u8 opcode = ctx->b[0];
     
     if (opcode == 0xF6 || opcode == 0xF7 || opcode == 0xFE || opcode == 0xFF)
@@ -991,16 +1038,9 @@ u8 handle_lock_repne_rep_hlt_cmc_clc_stc_cli_sti_cld_std(t_ctx *ctx)
         return 0; 
     }
 
-    u8 *mnemonics[14] = {
-        "lock", "", "repne", "rep",
-        "hlt", "cmc", "", "",  
-        "clc", "stc", "cli", "sti",
-        "cld", "std"
-    };
-
     u8 idx = opcode & 0xF;
 
-    if (idx == 1 || mnemonics[idx][0] == '\0')
+    if (idx == 1 || mnemonics[idx].size == 0)
     {
         return 0;
     }
@@ -1012,41 +1052,51 @@ u8 handle_lock_repne_rep_hlt_cmc_clc_stc_cli_sti_cld_std(t_ctx *ctx)
 
 u8 fmt_test_not_neg_mul_imul_div_idiv(t_ctx *ctx)
 {
-    u8 *mnemonics[8] = {"test", "", "not", "neg", "mul", "imul", "div", "idiv"};
+    String8 mnemonics[8] = 
+    {
+        STR8_LIT("test"),
+        STR8_LIT(""),
+        STR8_LIT("not"),
+        STR8_LIT("neg"),
+        STR8_LIT("mul"),
+        STR8_LIT("imul"),
+        STR8_LIT("div"),
+        STR8_LIT("idiv"),
+    };
 
     u8 opcode = ctx->b[0];
-    u8 W = ctx->b[0] & 1;  
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 REG = (ctx->b[1] >> 3) & 0x7; 
-    u8 RM  = ctx->b[1] & 0x7;
+    u8 W = opcode & 1;  
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
 
     if (REG == 1)
     {
         return 0;
     }
 
-    u8 *field_RM = decode_rm(ctx, RM, MOD, W);
+    String8 field_RM = decode_rm(ctx, RM, MOD, W);
     u8 current_len = match_MODRM_with_offset(MOD, RM);
 
     if (REG == 0)
     {
-        u8 *imm_val;
+        String8 imm_val;
         u8 imm_len;
 
         if (W == 0)
         {
-            imm_val = strjoin_fmt(ctx->arena, "0x%02X", ctx->b[current_len]);
+            imm_val = str8_fmt(ctx->arena, STR8_LIT("0x%02X"), ctx->b[current_len]);
             imm_len = 1;
         }
         else
         {
             u16 val = ctx->b[current_len] | (ctx->b[current_len + 1] << 8);
-            imm_val = strjoin_fmt(ctx->arena, "0x%04X", val);
+            imm_val = str8_fmt(ctx->arena, STR8_LIT("0x%04X"), val);
             imm_len = 2;
         }
 
-        u8 *operands = strjoin_fmt(ctx->arena, "%s, %s", field_RM, imm_val);
-        write_fmt_line(ctx, "test", operands);
+        String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_RM, imm_val);
+        write_fmt_line(ctx, STR8_LIT("test"), operands);
         
         return current_len + imm_len;
     }
@@ -1060,21 +1110,24 @@ u8 fmt_test_not_neg_mul_imul_div_idiv(t_ctx *ctx)
 
 u8 handle_inc_dec_rm8(t_ctx *ctx)
 {
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 REG = (ctx->b[1] >> 3) & 0x7;
-    u8 RM  = ctx->b[1] & 0x7;
+    String8 mnemonics[2] = 
+    {
+        STR8_LIT("inc"),
+        STR8_LIT("dec"),
+    };
+
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
+    u8 W = 0; 
 
     if (REG > 1) return 0;
 
-    u8 *mnemonics[2] = {"inc", "dec"};
+    String8 field_RM = decode_rm(ctx, RM, MOD, W);
     
-    u8 W = 0; 
-
-    u8 *field_RM = decode_rm(ctx, RM, MOD, W);
-    
-    if (MOD != 3) 
+    if (MOD != 0b11) 
     {
-        field_RM = strjoin_fmt(ctx->arena, "byte %s", field_RM);
+        field_RM = str8_fmt(ctx->arena, STR8_LIT("byte %s"), field_RM);
     }
 
     write_fmt_line(ctx, mnemonics[REG], field_RM);
@@ -1084,30 +1137,37 @@ u8 handle_inc_dec_rm8(t_ctx *ctx)
 
 u8 handle_inc_dec_call_jmp_push_16(t_ctx *ctx)
 {
-    u8 MOD = (ctx->b[1] >> 6) & 0x3;
-    u8 REG = (ctx->b[1] >> 3) & 0x7;
-    u8 RM  = ctx->b[1] & 0x7;
-
-    if (REG == 0x7) return 0;
-
-    u8 *mnemonics[8] = {
-        "inc", "dec", "call", "call", "jmp", "jmp", "push", ""
+    String8 mnemonics[8] = 
+    {
+        STR8_LIT("inc"),
+        STR8_LIT("dec"),
+        STR8_LIT("call"),
+        STR8_LIT("call"),
+        STR8_LIT("jmp"),
+        STR8_LIT("jmp"),
+        STR8_LIT("push"),
+        STR8_LIT(""),
     };
 
+    u8 MOD = GET_MOD(ctx->b[1]);
+    u8 REG = GET_REG(ctx->b[1]);
+    u8 RM = GET_RM(ctx->b[1]);
     u8 W = 1;
 
-    u8 *field_RM = decode_rm(ctx, RM, MOD, W);
-    u8 *final_operand = field_RM;
+    if (REG == 0b111) return 0;
 
-    if (REG == 0x3 || REG == 0x5)
+    String8 field_RM = decode_rm(ctx, RM, MOD, W);
+    String8 final_operand = field_RM;
+
+    if (REG == 0b011 || REG == 0b101)
     {
-        final_operand = strjoin_fmt(ctx->arena, "far %s", field_RM);
+        final_operand = str8_fmt(ctx->arena, STR8_LIT("far %s"), field_RM);
     }
-    else if (MOD != 3)
+    else if (MOD != 0b11)
     {
-        if (REG <= 1 || REG == 0x6) 
+        if (REG <= 0b001 || REG == 0b110) 
         {
-            final_operand = strjoin_fmt(ctx->arena, "word %s", field_RM);
+            final_operand = str8_fmt(ctx->arena, STR8_LIT("word %s"), field_RM);
         }
     }
 

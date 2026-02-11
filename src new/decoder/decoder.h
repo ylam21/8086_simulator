@@ -2,9 +2,8 @@
 #define DECODER_H
 
 #include "../common.h"
-#include <stdio.h>
-#include "opcodes.h"
 #include "../utils/io_utils.h"
+#include "opcodes.h"
 
 #define GET_MOD(b) (((b) >> 6) & 0x3)
 #define GET_REG(b) (((b) >> 3) & 0x7)
