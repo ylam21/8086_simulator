@@ -46,4 +46,7 @@ u8 fmt_test_not_neg_mul_imul_div_idiv(t_ctx *ctx);
 u8 handle_inc_dec_rm8(t_ctx *ctx);
 u8 handle_inc_dec_call_jmp_push_16(t_ctx *ctx);
 
+extern String8 table_reg_w_one[8];
+extern String8 table_sreg[4];
+
 #endif

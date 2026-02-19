@@ -7,11 +7,13 @@
 
 typedef struct
 {
+    u8 execute;
     Arena *arena;
     s32 fd;
     u8 *b;
     u8 seg_prefix;
     u32 current_ip;
+    u16 regs[14]; // Array where we store the state of all 14 registers, 16-bit wide each
 } t_ctx;
 
 

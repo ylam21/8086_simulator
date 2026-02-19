@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -17,10 +18,16 @@ u8 is_op_prefix(u8 opcode)
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    if (argc < 2)
     {
         fprintf(stderr, "Usage: %s <filename>\n", PROGRAM_PATH);
         return (EXIT_FAILURE);
+    }
+
+    u8 execute = false;
+    if (argv[2])
+    {
+        execute = strcmp(argv[2], "-exec") == 0;
     }
 
     char *filename = argv[1];
@@ -75,7 +82,9 @@ int main(int argc, char **argv)
         .b = buffer,
         .fd = fd_out,
         .current_ip = offset,
-        .seg_prefix = 0xFF
+        .seg_prefix = 0xFF,
+        .execute = execute,
+        .regs = {0},
     };
     
     u64 i = 0;
@@ -102,6 +111,11 @@ int main(int argc, char **argv)
             fprintf(stderr, "Error: Wrong instruction code detected. Opcode is followed with a byte which value is not supported\n");
             break;
         }
+    }
+
+    if (ctx.execute)
+    {
+        write_final_regs(arena, fd_out, ctx.regs);
     }
 
     close(fd_out);

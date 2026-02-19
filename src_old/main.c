@@ -1,4 +1,5 @@
 #include <fcntl.h>
+#include <stdbool.h>
 #include "common.h"
 #include "simulate_8086.h"
 
@@ -26,11 +27,20 @@ static String8 read_file(Arena *arena, s32 fd)
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
+    u8 execute = false;
+
+    if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <filename.asm>\n", PROGRAM_PATH);
+        fprintf(stderr, "Usage: %s <filename> <flags>\n", PROGRAM_PATH);
         return (EXIT_FAILURE);
     }
+
+    if (strcmp(argv[2], "-exec") == 0)
+    {
+        execute = true;
+        printf("exectuion\n");
+    }
+
 
     
     u8 *filename_in = (u8 *)argv[1];

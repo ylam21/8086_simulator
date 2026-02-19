@@ -432,6 +432,10 @@ static u8 fmt_modrm(t_ctx *ctx, String8 mnemonic)
     }
 
     write_fmt_line(ctx, mnemonic, operands);
+    if (ctx->execute)
+    {
+        
+    }
 
     return match_MODRM_with_offset(MOD, RM);
 }
@@ -513,8 +517,8 @@ u8 fmt_mov_sreg_common(t_ctx *ctx)
     u8 W = 1;
     u8 D = (opcode >> 1) & 1;
     u8 MOD = GET_MOD(ctx->b[1]);
-    u8 RM = GET_RM(ctx->b[1]);
     u8 SREG = (ctx->b[1] >> 3) & 0x3;
+    u8 RM = GET_RM(ctx->b[1]);
 
     String8 field_RM = decode_rm(ctx, RM, MOD, W);
     String8 field_SREG = table_sreg[SREG];
@@ -640,6 +644,21 @@ u8 fmt_test_imm_to_acc(t_ctx *ctx)
     }
 }
 
+
+static void *get_reg_pointer(u16 *regs, u8 REG, u8 W)
+{
+    if (W == 1)
+    {
+        return &regs[REG];
+    }
+    else
+    {
+        u8 *regs8 = (u8 *)regs;
+        u8 offset = (REG % 4) * 2 + (REG / 4);
+        return &regs8[offset];
+    }
+}
+
 u8 fmt_mov_imm_to_reg(t_ctx *ctx)
 {
     u8 opcode = ctx->b[0];
@@ -652,6 +671,36 @@ u8 fmt_mov_imm_to_reg(t_ctx *ctx)
     String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_REG, field_IMM);
 
     write_fmt_line(ctx, STR8_LIT("mov"), operands);
+    if (ctx->execute)
+    {
+        u16 state_old;
+        u16 state_new;
+        void *dest = get_reg_pointer(ctx->regs, REG, W);
+
+        if (W == 0) {
+            state_old = *(u8 *)dest;
+        } else {
+            state_old = *(u16 *)dest;
+        }
+        
+        if (W == 0)
+        {
+            *(u8 *)dest = ctx->b[1];
+        }
+        else
+        {
+            *(u16 *)dest = ctx->b[1] | (ctx->b[2] << 8);
+        }
+        
+        if (W == 0) {
+            state_new = *(u8 *)dest;
+        } else {
+            state_new = *(u16 *)dest;
+        }
+
+        write_fmt_sim_line(ctx, field_REG, state_old, state_new);
+    }
+    write(ctx->fd, "\n", 1);
 
     if (W == 0)
     {
