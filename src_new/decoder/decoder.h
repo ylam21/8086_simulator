@@ -8,6 +8,7 @@
 #define GET_MOD(b) (((b) >> 6) & 0x3)
 #define GET_REG(b) (((b) >> 3) & 0x7)
 #define GET_RM(b)  ((b) & 0x7)
+#define ACC_IDX 0
 
 typedef enum
 {
@@ -30,38 +31,37 @@ typedef struct
 typedef struct
 {
     String8 mnemonic;
-    u8 size;
-    u8 w_bit;
-
     Operand dest;
     Operand src;
+    u8 size;
+    u8 w_bit;
 } Instruction;
 
 
 Instruction opcode_not_used(t_ctx *ctx);
+Instruction modrm_common(t_ctx *ctx);
+Instruction modrm_test_xchg_mov(t_ctx *ctx);
+Instruction imm_to_rm(t_ctx *ctx);
+Instruction imm_to_acc(t_ctx *ctx);
+Instruction mov_imm_to_reg(t_ctx *ctx);
+Instruction mov_imm_to_mem(t_ctx *ctx);
+Instruction mov_mem_to_acc(t_ctx *ctx);
 
-Instruction fmt_modrm_common(t_ctx *ctx);
-Instruction fmt_imm_to_acc(t_ctx *ctx);
 Instruction fmt_segment_push_pop(t_ctx *ctx);
 Instruction handle_segment_override(t_ctx *ctx);
 Instruction handle_daa_das_aaa_aas(t_ctx *ctx);
 Instruction handle_inc_dec_push_pop_reg_16(t_ctx *ctx);
 Instruction fmt_jump(t_ctx *ctx);
-Instruction imm_to_rm(t_ctx *ctx);
-Instruction fmt_modrm_test_xchg_mov(t_ctx *ctx);
 Instruction fmt_mov_sreg_common(t_ctx *ctx);
 Instruction fmt_lea_mem_to_reg_16(t_ctx *ctx);
 Instruction fmt_pop_rm_16(t_ctx *ctx);
 Instruction fmt_xchg_reg16_to_acc(t_ctx *ctx);
 Instruction fmt_call_far(t_ctx *ctx);
 Instruction handle_cbw_cwd_wait_pushf_popf_sahf_lahf(t_ctx *ctx);
-Instruction fmt_mov_mem_to_reg(t_ctx *ctx);
 Instruction fmt_movs_cmps_stos_lods_scas(t_ctx *ctx);
 Instruction fmt_test_imm_to_acc(t_ctx *ctx);
-Instruction mov_imm_to_reg(t_ctx *ctx);
 Instruction handle_ret(t_ctx *ctx);
 Instruction fmt_les_lds_mem16_to_reg16(t_ctx *ctx);
-Instruction fmt_mov_imm_to_mem(t_ctx *ctx);
 Instruction handle_interrupt(t_ctx *ctx);
 Instruction fmt_rol_ror_rcl_rcr_sal_shr_sar(t_ctx *ctx);
 Instruction handle_aam_aad_xlat(t_ctx *ctx);
