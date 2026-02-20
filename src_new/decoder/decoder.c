@@ -59,45 +59,45 @@ static String8 decode_reg(u8 REG, u8 W)
     }
 }
 
-static String8 decode_rm(t_ctx *ctx, u8 RM, u8 MOD, u8 W)
+static Operand decode_operand_rm(t_ctx *ctx, u8 MOD, u8 RM)
 {
-    String8 base = table_mem_address_calc[RM];
-    String8 prefix = (String8){0};
-
-    if (ctx->seg_prefix < 4)
-    {
-        prefix = table_sreg[ctx->seg_prefix];
-    }
-   
+    Operand op = {0};
     if (MOD == 0b00 && RM == 0b110)
     {
         /* DIRECT ADDRESS */
         /* When R/M = 0b110, then 16-bit displacement follows */ 
-        u16 disp = ctx->b[2] | (ctx->b[3] << 8);
-        return str8_fmt(ctx->arena, STR8_LIT("%?s[0x%04X]"), prefix, disp);
+        op.type = OP_MEMORY;
+        op.mem_base_reg = RM;
+        op.mem_disp = ctx->b[2] | (ctx->b[3] << 8);
     }
     else if (MOD == 0b00)
     {
         /* Memory Mode, no displacement */
-        return str8_fmt(ctx->arena, STR8_LIT("%?s[%s]"), prefix, base);
+        op.type = OP_MEMORY;
+        op.mem_base_reg = RM;
+        op.mem_disp = 0;
     }
     else if (MOD == 0b01)
     {
         /* Memory Mode, 8-bit displacement follows */
-        u8 disp = (s8)ctx->b[2];
-        return str8_fmt(ctx->arena, STR8_LIT("%?s[%s + %d]"), prefix, base, disp);
+        op.type = OP_MEMORY;
+        op.mem_base_reg = RM;
+        op.mem_disp = (s8)ctx->b[2];
     }
     else if (MOD == 0b10)
     {
         /* Memory Mode, 16-bit displacement follows */
-        u16 disp = ctx->b[2] | (ctx->b[3] << 8);
-        return str8_fmt(ctx->arena, STR8_LIT("%?s[%s + %d]"), prefix, base, disp);
+        op.type = OP_MEMORY;
+        op.mem_base_reg = RM;
+        op.mem_disp = ctx->b[2] | (ctx->b[3] << 8);
     }
     else
     {
         /* Register Mode (no displacement) */
-        return decode_reg(RM, W);
+        op.type = OP_REGISTER;
+        op.reg_idx = RM;
     }
+    return op;
 }
 
 static u8 match_MODRM_with_offset(u8 MOD, u8 RM)
@@ -146,33 +146,37 @@ static String8 decode_imm_to_reg(t_ctx *ctx, u8 W, u8 data_lo, u8 data_hi)
     }
 }
 
-u8 opcode_not_used(t_ctx *ctx)
+Instruction opcode_not_used(t_ctx *ctx)
 {
     (void)ctx;
-    return 1;
+    Instruction inst = {0};
+    inst.size = 0;
+    return inst;
 }
 
 
-static String8 decode_immediate(t_ctx *ctx, u8 S, u8 W, u8 *imm_ptr)
+static Operand decode_operand_imm(t_ctx *ctx, u8 S, u8 W, u8 *imm_ptr)
 {
+    Operand op = {0};
+    op.type = OP_IMMEDIATE;
     if (W == 0)
     {
-        return str8_fmt(ctx->arena, STR8_LIT("0x%02X"), *imm_ptr);
+        op.immediate_val = *imm_ptr;
     }
     else if (S == 1)
     {
-        s16 val = (s16)((s8)imm_ptr[0]);
-        return str8_fmt(ctx->arena, STR8_LIT("0x%04X"), (u16)val);
+        op.immediate_val = (s16)((s8)imm_ptr[0]);
     }
     else
     {
-        u16 val = imm_ptr[0] | (imm_ptr[1] << 8);
-        return str8_fmt(ctx->arena, STR8_LIT("0x%04X"), val);
+        op.immediate_val = imm_ptr[0] | (imm_ptr[1] << 8);
     }
+    return op;
 }
 
-u8 fmt_imm_to_rm(t_ctx *ctx)
+Instruction imm_to_rm(t_ctx *ctx)
 {
+    Instruction inst = {0};
     String8 mnemonics[8] =
     {
         STR8_LIT("add"),
@@ -184,37 +188,18 @@ u8 fmt_imm_to_rm(t_ctx *ctx)
         STR8_LIT("xor"),
         STR8_LIT("cmp"),
     };
-
     u8 opcode = ctx->b[0];
-
     u8 idx = (ctx->b[1] >> 3) & 0x7;
+    inst.mnemonic = mnemonics[idx];
     u8 S = (opcode >> 1) & 1;
-    u8 W = opcode & 1;
     u8 MOD = GET_MOD(ctx->b[1]);
     u8 RM = GET_RM(ctx->b[1]);
-
-    String8 field_rm = decode_rm(ctx, RM, MOD, W);
-
+    u8 W = opcode & 1;
+    inst.w_bit = W;
+    Operand dest = decode_operand_rm(ctx, MOD, RM);
     u8 current_len = match_MODRM_with_offset(MOD, RM);
     u8 *imm_ptr = &ctx->b[current_len];
-
-    String8 field_imm = decode_immediate(ctx, S, W, imm_ptr); 
-
-    if (MOD != 0b11)    
-    {
-        if (W == 0)
-        {
-            field_rm = str8_fmt(ctx->arena, STR8_LIT("%s %s"), STR8_LIT("byte"), field_rm);
-        }
-        else
-        {
-            field_rm = str8_fmt(ctx->arena, STR8_LIT("%s %s"), STR8_LIT("word"), field_rm);
-        }
-    }
-
-    String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_rm, field_imm);
-    write_fmt_line(ctx, mnemonics[idx], operands);
-
+    Operand src = decode_operand_imm(ctx, S, W, imm_ptr);
     u8 imm_len;
     if (W == 1 && S == 0)
     {
@@ -224,8 +209,8 @@ u8 fmt_imm_to_rm(t_ctx *ctx)
     {
         imm_len = 1;
     }
-
-    return current_len + imm_len;
+    inst.size = current_len + imm_len;
+    return inst;
 }
 
 u8 fmt_jump(t_ctx *ctx)
@@ -407,15 +392,17 @@ u8 fmt_imm_to_acc(t_ctx *ctx)
     }
 }
 
-static u8 fmt_modrm(t_ctx *ctx, String8 mnemonic)
+static Instruction modrm(t_ctx *ctx, String8 mnemonic)
 {
+    Instruction inst = {0};
+    inst.mnemonic = mnemonic;
     u8 opcode = ctx->b[0];
     u8 D = (opcode >> 1) & 1;
     u8 W = opcode & 1;
     u8 MOD = GET_MOD(ctx->b[1]);
     u8 REG = GET_REG(ctx->b[1]);
     u8 RM = GET_RM(ctx->b[1]);
-
+    Operand rm = decode_operand_rm(ctx, MOD, RM);
     String8 field_RM = decode_rm(ctx, RM, MOD, W);
     String8 field_REG = decode_reg(REG, W);
 
@@ -434,7 +421,7 @@ static u8 fmt_modrm(t_ctx *ctx, String8 mnemonic)
     write_fmt_line(ctx, mnemonic, operands);
     if (ctx->execute)
     {
-        
+
     }
 
     return match_MODRM_with_offset(MOD, RM);
@@ -659,57 +646,29 @@ static void *get_reg_pointer(u16 *regs, u8 REG, u8 W)
     }
 }
 
-u8 fmt_mov_imm_to_reg(t_ctx *ctx)
+Instruction mov_imm_to_reg(t_ctx *ctx)
 {
+    Instruction inst = {0};
+    inst.mnemonic = STR8_LIT("mov");
     u8 opcode = ctx->b[0];
     u8 REG = opcode & 0x7;
     u8 W = (opcode >> 3) & 1;
-
-    String8 field_IMM = decode_imm_to_reg(ctx, W, ctx->b[1], ctx->b[2]);
-    String8 field_REG = decode_reg(REG, W);
-
-    String8 operands = str8_fmt(ctx->arena, STR8_LIT("%s, %s"), field_REG, field_IMM);
-
-    write_fmt_line(ctx, STR8_LIT("mov"), operands);
-    if (ctx->execute)
-    {
-        u16 state_old;
-        u16 state_new;
-        void *dest = get_reg_pointer(ctx->regs, REG, W);
-
-        if (W == 0) {
-            state_old = *(u8 *)dest;
-        } else {
-            state_old = *(u16 *)dest;
-        }
-        
-        if (W == 0)
-        {
-            *(u8 *)dest = ctx->b[1];
-        }
-        else
-        {
-            *(u16 *)dest = ctx->b[1] | (ctx->b[2] << 8);
-        }
-        
-        if (W == 0) {
-            state_new = *(u8 *)dest;
-        } else {
-            state_new = *(u16 *)dest;
-        }
-
-        write_fmt_sim_line(ctx, field_REG, state_old, state_new);
-    }
-    write(ctx->fd, "\n", 1);
-
+    inst.w_bit = W;
     if (W == 0)
     {
-        return 2;
+        inst.size = 2;
     }
     else
     {
-        return 3;
+        inst.size = 3;
     }
+    Operand dest = {0};
+    dest.type = OP_REGISTER;
+    dest.reg_idx = REG;
+    Operand src = {0};
+    src.type = OP_IMMEDIATE;
+    src.immediate_val = ctx->b[1] | (ctx->b[2] << 8);
+    return inst;
 }
 
 u8 handle_ret(t_ctx *ctx)

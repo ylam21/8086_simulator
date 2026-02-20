@@ -8,6 +8,22 @@
 #include "decoder/decoder.h"
 #include "decoder/opcodes.h"
 
+#define MASK_EXECUTE 0x1
+#define MASK_DISASM 0x2
+
+enum start_flags
+{
+    StartFlagExecute = 0x1,
+};
+
+
+void print_instruction(Instruction inst)
+{
+    Instruction = {0};
+}
+
+
+
 u8 is_op_prefix(u8 opcode)
 {
     return (opcode == 0x26 ||\
@@ -20,14 +36,23 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <filename>\n", PROGRAM_PATH);
+        fprintf(stderr, "Usage: %s <filename> <start_flag>\n", PROGRAM_PATH);
         return (EXIT_FAILURE);
     }
 
-    u8 execute = false;
-    if (argv[2])
+    u8 StartFlags = 0;
+
+    u8 idx = 0;
+    char *arg = argv[idx];
+    while (arg)
     {
-        execute = strcmp(argv[2], "-exec") == 0;
+        arg = argv[idx];
+        if (strcmp(arg, "-exec") == 0)
+        {
+            StartFlags = 0;
+            StartFlags |= StartFlagExecute;
+        }
+        idx += 1;
     }
 
     char *filename = argv[1];
@@ -80,42 +105,27 @@ int main(int argc, char **argv)
     {
         .arena = arena,
         .b = buffer,
-        .fd = fd_out,
         .current_ip = offset,
         .seg_prefix = 0xFF,
-        .execute = execute,
-        .regs = {0},
     };
     
-    u64 i = 0;
-    while (i < (u64)read_bytes)
+    u64 ip = 0;
+    u64 end = (u64)read_bytes;
+    while (ip < end)
     {
-        ctx.b = &buffer[i];
+        ctx.b = &buffer[ip];
         opcode = ctx.b[0];
         u8 is_prefix = is_op_prefix(opcode);
         func_ptr handler = opcode_table[opcode];
-        offset = handler(&ctx);
+        Instruction inst = handler(&ctx);
 
-        if (offset)
-        {
-            i += offset;
-            ctx.current_ip += offset;
-            arena_reset(ctx.arena);
-            if (!is_prefix)
-            {
-                ctx.seg_prefix = 0xFF;
-            }
-        }
-        else
-        {
-            fprintf(stderr, "Error: Wrong instruction code detected. Opcode is followed with a byte which value is not supported\n");
-            break;
-        }
-    }
+        print_instruction(inst);
 
-    if (ctx.execute)
-    {
-        write_final_regs(arena, fd_out, ctx.regs);
+        if (StartFlags & StartFlagExecute)
+        {
+            execute_instruction();
+        }
+
     }
 
     close(fd_out);
