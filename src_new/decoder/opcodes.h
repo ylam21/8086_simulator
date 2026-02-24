@@ -6,15 +6,13 @@
 #include "../common.h"
 #include "decoder.h"
 
-typedef struct
+typedef struct t_ctx t_ctx;
+struct t_ctx
 {
-    Arena *arena;
     u8 *b;
     u8 seg_prefix;
     u32 current_ip;
-} t_ctx; // TODO: rename t_ctx to Ctx
-
-
+}; 
 
 typedef Instruction (*func_ptr)(t_ctx *ctx); 
 
