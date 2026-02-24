@@ -64,11 +64,12 @@ enum start_flags
 // TODO: implement jump table
 String8 translate_operand(Arena *arena, Operand op, u8 W)
 {
-    if (OP_NONE)
+    OperandType type = op.type;
+    if (type == OP_NONE)
     {
         return (String8){.size = 0};
     }
-    else if (OP_REGISTER)
+    else if (type == OP_REGISTER)
     {
         if (W == 0)
         {
@@ -79,11 +80,11 @@ String8 translate_operand(Arena *arena, Operand op, u8 W)
             return table_reg_w_one[op.reg_idx];
         }
     }
-    else if (OP_SREG)
+    else if (type == OP_SREG)
     {
         return table_sreg[op.reg_idx];
     }
-    else if (OP_IMMEDIATE)
+    else if (type == OP_IMMEDIATE)
     {
         String8 prefix;
         if (W == 0)
@@ -96,16 +97,27 @@ String8 translate_operand(Arena *arena, Operand op, u8 W)
         }
         return str8_fmt(arena, STR8_LIT("%s %d"), prefix, op.immediate_val);
     }
-    else if (OP_MEMORY)
+    else if (type == OP_MEMORY)
     {
         if (op.mem_disp != 0)
         {
-            return str8_fmt(arena, STR8_LIT("[%s + %u]"), table_mem_address_calc[op.mem_base_reg], op.mem_disp);
+            if (op.mem_disp < 0)
+            {
+                return str8_fmt(arena, STR8_LIT("[%s - %u]"), table_mem_address_calc[op.mem_base_reg], -(op.mem_disp));
+            }
+            else
+            {
+                return str8_fmt(arena, STR8_LIT("[%s + %u]"), table_mem_address_calc[op.mem_base_reg], op.mem_disp);
+            }
         }
         else
         {
             return str8_fmt(arena, STR8_LIT("[%s]"), table_mem_address_calc[op.mem_base_reg]);
         }
+    }
+    else if (type == OP_MEMORY_DIR)
+    {
+        return str8_fmt(arena, STR8_LIT("[%u]"), op.mem_disp);
     }
     else
     {

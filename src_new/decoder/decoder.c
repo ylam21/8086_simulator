@@ -13,7 +13,7 @@ static Operand decode_operand_sreg(u8 REG)
 
 static Operand decode_operand_mem(u8 W, u8 add_lo, u8 add_hi)
 {
-    Operand op = {.type = OP_MEMORY};
+    Operand op = {.type = OP_MEMORY_DIR};
     if (W == 0)
     {
         op.mem_disp = add_lo;
@@ -32,8 +32,7 @@ static Operand decode_operand_rm(t_ctx *ctx, u8 MOD, u8 RM)
     {
         /* DIRECT ADDRESS */
         /* When R/M = 0b110, then 16-bit displacement follows */ 
-        op.type = OP_MEMORY;
-        op.mem_base_reg = RM;
+        op.type = OP_MEMORY_DIR;
         op.mem_disp = ctx->b[2] | (ctx->b[3] << 8);
     }
     else if (MOD == 0b00)

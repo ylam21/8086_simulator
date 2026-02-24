@@ -16,6 +16,7 @@ typedef enum
     OP_SREG,
     OP_IMMEDIATE,
     OP_MEMORY,
+    OP_MEMORY_DIR, // Direct Address Calculation
 } OperandType;
 
 typedef struct
