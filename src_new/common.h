@@ -14,6 +14,7 @@ typedef int64_t s64;
 
 typedef struct Arena Arena; 
 typedef struct String8 String8;
+typedef struct Cpu Cpu;
 
 struct String8
 {
@@ -21,13 +22,17 @@ struct String8
     u8 *str;
 };
 
+struct Cpu
+{
+    u16 *regs;
+};
+
+
 #define STR8_LIT(s) (String8){sizeof(s) - 1, (u8*)(s)}
 
 #include "arena/arena.h"
 #include "utils/str8_fmt/str8_fmt.h"
 
-#define ACC_BYTE STR8_LIT("al") 
-#define ACC_WORD STR8_LIT("ax") 
 #define PROGRAM_PATH "bin/simulate8086"
 
 #endif

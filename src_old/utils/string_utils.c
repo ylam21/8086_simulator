@@ -114,3 +114,4 @@ s32 string8_hex_to_s16(String8 s)
 
 	return (s16)acc;
 }
+
