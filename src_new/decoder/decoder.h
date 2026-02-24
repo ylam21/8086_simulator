@@ -13,10 +13,14 @@ typedef enum
 {
     OP_NONE,
     OP_REGISTER,
+    OP_REGISTER_DX,
+    OP_REGISTER_CL,
     OP_SREG,
     OP_IMMEDIATE,
     OP_MEMORY,
     OP_MEMORY_DIR, // Direct Address Calculation
+    OP_IP_RELATIVE,
+    OP_COUNT,
 } OperandType;
 
 typedef struct

@@ -170,7 +170,7 @@ Instruction jump(t_ctx *ctx)
     {
         STR8_LIT("jo") , STR8_LIT( "jno"),
         STR8_LIT("jb") , STR8_LIT( "jnb"),
-        STR8_LIT("je") , STR8_LIT( "jne"),
+        STR8_LIT("jz") , STR8_LIT( "jnz"),
         STR8_LIT("jbe"), STR8_LIT("ja"),
         STR8_LIT("js") , STR8_LIT( "jns"),
         STR8_LIT("jp") , STR8_LIT( "jnp"),
@@ -181,7 +181,7 @@ Instruction jump(t_ctx *ctx)
     u8 idx = opcode & 0xF;
     s8 IP_INC8 = (s8)ctx->b[1];
     u16 target_address = (u16)(ctx->current_ip + 2 + IP_INC8);
-    Operand dest = {.type = OP_IMMEDIATE, .immediate_val = target_address};
+    Operand dest = {.type = OP_IP_RELATIVE, .immediate_val = target_address};
     Instruction inst = {0};
     inst.mnemonic = mnemonics[idx];
     inst.dest = dest;
@@ -498,20 +498,36 @@ Instruction mov_mem_to_acc(t_ctx *ctx)
 
 Instruction movs_cmps_stos_lods_scas(t_ctx *ctx)
 {
-    String8 mnemonics[6] = 
+    String8 mnemonics_b[6] = 
     {
-        STR8_LIT("movs"), 
-        STR8_LIT("cmps"), 
+        STR8_LIT("movsb"), 
+        STR8_LIT("cmpsb"), 
         STR8_LIT(""),   
-        STR8_LIT("stos"), 
-        STR8_LIT("lods"), 
-        STR8_LIT("scas"),  
+        STR8_LIT("stosb"), 
+        STR8_LIT("lodsb"), 
+        STR8_LIT("scasb"),  
+    }; 
+    String8 mnemonics_w[6] = 
+    {
+        STR8_LIT("movsw"), 
+        STR8_LIT("cmpsw"), 
+        STR8_LIT(""),   
+        STR8_LIT("stosw"), 
+        STR8_LIT("lodsw"), 
+        STR8_LIT("scasw"),  
     };
     u8 opcode = ctx->b[0];
     u8 idx = (opcode - 0xA4) >> 1;
     u8 W = opcode & 1;
     Instruction inst = {0};
-    inst.mnemonic = mnemonics[idx];
+    if (W == 0)
+    {
+        inst.mnemonic = mnemonics_b[idx];
+    }
+    else
+    {
+        inst.mnemonic = mnemonics_w[idx];
+    }
     inst.w_bit = W;
     inst.size = 1;
     return inst;
@@ -701,7 +717,8 @@ Instruction rol_ror_rcl_rcr_sal_shr_sar(t_ctx *ctx)
     }
     else
     {
-        src.type = OP_REGISTER;
+        // Shift/rotate count is specifiend in CL regiset
+        src.type = OP_REGISTER_CL;
         src.reg_idx = 1;
     }
     inst.src = src;
@@ -726,7 +743,6 @@ Instruction handle_aam_aad_xlat(t_ctx *ctx)
     {
         inst.mnemonic = STR8_LIT("aad");
     }
-    inst.dest = decode_operand_imm(0, 0, &ctx->b[1]);
     inst.size = 2;
     return inst;
 }
@@ -753,8 +769,8 @@ Instruction loops(t_ctx *ctx)
 {
     String8 mnemonics[4] =
     {
-        STR8_LIT("loopne"),
-        STR8_LIT("loope"),
+        STR8_LIT("loopnz"),
+        STR8_LIT("loopz"),
         STR8_LIT("loop"), 
         STR8_LIT("jcxz"),
     };
@@ -763,7 +779,7 @@ Instruction loops(t_ctx *ctx)
     s8 disp = (s8)ctx->b[1];
     u16 target = (u16)(ctx->current_ip + 2 + disp);
     Operand dest;
-    dest.type = OP_IMMEDIATE;
+    dest.type = OP_IP_RELATIVE;
     dest.immediate_val = target;
     Instruction inst = {0};
     inst.mnemonic = mnemonics[idx];
@@ -786,15 +802,15 @@ Instruction in_out_dx_to_acc(t_ctx *ctx)
     Operand src;
     if (is_out)
     {
-        dest.type = OP_REGISTER;
-        dest.reg_idx = 3;
+        dest.type = OP_REGISTER_DX;
+        dest.reg_idx = 2;  // idx for "dx" register table
         src = decode_operand_reg(ACC_IDX);
     }
     else
     {
         dest = decode_operand_reg(ACC_IDX);
-        src.type = OP_REGISTER;
-        src.reg_idx = 3;
+        src.type = OP_REGISTER_DX;
+        src.reg_idx = 2;
     }
     Instruction inst = {0};
     inst.mnemonic = mnemonics[is_out];
@@ -950,6 +966,7 @@ Instruction test_not_neg_mul_imul_div_idiv(t_ctx *ctx)
         inst.size = current_len;
     }
     inst.dest = decode_operand_rm(ctx, MOD, RM);
+    inst.w_bit = W;
     return inst;
 }
 

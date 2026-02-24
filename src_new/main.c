@@ -61,83 +61,189 @@ enum start_flags
 };
 
 
-// TODO: implement jump table
-String8 translate_operand(Arena *arena, Operand op, u8 W)
+typedef String8 (*translateOperand)(Arena *arena, Operand op, u8 W);
+
+String8 translateOpNone(Arena *arena, Operand op, u8 W);
+String8 translateOpRegister(Arena *arena, Operand op, u8 W);
+String8 translateOpRegisterDx(Arena *arena, Operand op, u8 W);
+String8 translateOpRegisterCl(Arena *arena, Operand op, u8 W);
+String8 translateOpSegRegister(Arena *arena, Operand op, u8 W);
+String8 translateOpImmediate(Arena *arena, Operand op, u8 W);
+String8 translateOpMemory(Arena *arena, Operand op, u8 W);
+String8 translateOpMemoryDir(Arena *arena, Operand op, u8 W);
+String8 translateOpIpRelative(Arena *arena, Operand op, u8 W);
+
+translateOperand translate_table[OP_COUNT] =
 {
-    OperandType type = op.type;
-    if (type == OP_NONE)
+    [OP_NONE] = translateOpNone,
+    [OP_REGISTER] = translateOpRegister,
+    [OP_REGISTER_DX] = translateOpRegisterDx,
+    [OP_REGISTER_CL] = translateOpRegisterCl,
+    [OP_SREG] = translateOpSegRegister,
+    [OP_IMMEDIATE] = translateOpImmediate,
+    [OP_MEMORY] = translateOpMemory,
+    [OP_MEMORY_DIR] = translateOpMemoryDir,
+    [OP_IP_RELATIVE] = translateOpIpRelative,
+};
+
+String8 translateOpNone(Arena *arena, Operand op, u8 W)
+{
+    (void)arena;
+    (void)op;
+    (void)W;
+    return (String8){0};
+};
+
+String8 translateOpRegister(Arena *arena, Operand op, u8 W)
+{
+    (void)arena;
+    if (W == 0)
     {
-        return (String8){.size = 0};
-    }
-    else if (type == OP_REGISTER)
-    {
-        if (W == 0)
-        {
-            return table_reg_w_zero[op.reg_idx];
-        }
-        else
-        {
-            return table_reg_w_one[op.reg_idx];
-        }
-    }
-    else if (type == OP_SREG)
-    {
-        return table_sreg[op.reg_idx];
-    }
-    else if (type == OP_IMMEDIATE)
-    {
-        String8 prefix;
-        if (W == 0)
-        {
-            prefix = STR8_LIT("byte");
-        }
-        else
-        {
-            prefix = STR8_LIT("word");
-        }
-        return str8_fmt(arena, STR8_LIT("%s %d"), prefix, op.immediate_val);
-    }
-    else if (type == OP_MEMORY)
-    {
-        if (op.mem_disp != 0)
-        {
-            if (op.mem_disp < 0)
-            {
-                return str8_fmt(arena, STR8_LIT("[%s - %u]"), table_mem_address_calc[op.mem_base_reg], -(op.mem_disp));
-            }
-            else
-            {
-                return str8_fmt(arena, STR8_LIT("[%s + %u]"), table_mem_address_calc[op.mem_base_reg], op.mem_disp);
-            }
-        }
-        else
-        {
-            return str8_fmt(arena, STR8_LIT("[%s]"), table_mem_address_calc[op.mem_base_reg]);
-        }
-    }
-    else if (type == OP_MEMORY_DIR)
-    {
-        return str8_fmt(arena, STR8_LIT("[%u]"), op.mem_disp);
+        return table_reg_w_zero[op.reg_idx];
     }
     else
     {
-        return (String8){.size = 0};
+        return table_reg_w_one[op.reg_idx];
+    }
+}
+
+String8 translateOpRegisterDx(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    (void)arena;
+    return table_reg_w_one[op.reg_idx];
+}
+
+String8 translateOpRegisterCl(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    (void)arena;
+    return table_reg_w_zero[op.reg_idx];
+}
+String8 translateOpSegRegister(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    (void)arena;
+    return table_sreg[op.reg_idx];
+}
+
+String8 translateOpImmediate(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    (void)arena;
+    return str8_fmt(arena, STR8_LIT("%u"), op.immediate_val);
+}
+
+String8 translateOpMemory(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    if (op.mem_disp != 0)
+    {
+        if (op.mem_disp < 0)
+        {
+            return str8_fmt(arena, STR8_LIT("[%s - %u]"), table_mem_address_calc[op.mem_base_reg], (u16)-(op.mem_disp));
+        }
+        else
+        {
+            return str8_fmt(arena, STR8_LIT("[%s + %u]"), table_mem_address_calc[op.mem_base_reg], (u16)op.mem_disp);
+        }
+    }
+    else
+    {
+        return str8_fmt(arena, STR8_LIT("[%s]"), table_mem_address_calc[op.mem_base_reg]);
+    }
+}
+
+String8 translateOpMemoryDir(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    return str8_fmt(arena, STR8_LIT("[%u]"), (u16)op.mem_disp);
+}
+
+String8 translateOpIpRelative(Arena *arena, Operand op, u8 W)
+{
+    (void)W;
+    return str8_fmt(arena, STR8_LIT("%u"), op.immediate_val);
+}
+
+
+u8 is_shift(String8 mnemonic)
+{
+    return  (mnemonic.size == 3 && \
+            (mnemonic.str[0] == 's' || mnemonic.str[0] == 'r') && \
+            (mnemonic.str[2] == 'l' || mnemonic.str[2] == 'r')
+            );
+}
+
+u32 str8ncmp(String8 s1, String8 s2, u32 n)
+{
+    u32 i = 0;
+    while (i < s1.size && i < s2.size && i < n && s1.str[i] == s2.str[i])
+    {
+        i += 1;
+    }
+    if (i == n)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
     }
 }
 
 void print_instruction(Arena *arena, s32 fd, Instruction inst)
 {
-    String8 dest = translate_operand(arena, inst.dest, inst.w_bit);
-    String8 src = translate_operand(arena, inst.src, inst.w_bit);
+    OperandType dType = inst.dest.type;
+    OperandType sType = inst.src.type;
+    String8 dest = translate_table[dType](arena, inst.dest, inst.w_bit);
+    String8 src = translate_table[sType](arena, inst.src, inst.w_bit);
     String8 res;
-    
-    if (src.size != 0)
+    String8 prefix;
+    if (inst.w_bit == 0)
     {
-        res = str8_fmt(arena, STR8_LIT("%s %s, %s\n"), inst.mnemonic, dest, src);
+        prefix = STR8_LIT("byte");
     }
     else
     {
-        res = str8_fmt(arena, STR8_LIT("%s %s\n"), inst.mnemonic, dest);
+        prefix = STR8_LIT("word");
+    }
+    
+    if (dType == OP_NONE && sType == OP_NONE)
+    {
+        s32 is_prefix =  !str8ncmp(inst.mnemonic, STR8_LIT("rep"), 3) || \
+                        !str8ncmp(inst.mnemonic, STR8_LIT("repne"), 5) || \
+                        !str8ncmp(inst.mnemonic, STR8_LIT("lock"), 4);
+        if (is_prefix)
+        {
+            res = str8_fmt(arena, STR8_LIT("%s "), inst.mnemonic);
+        }
+        else
+        {
+            res = str8_fmt(arena, STR8_LIT("%s\n"), inst.mnemonic);
+        }
+    }
+    else if (src.size != 0)
+    {   
+        if ((dType == OP_MEMORY || dType == OP_MEMORY_DIR) && (sType == OP_IMMEDIATE || is_shift(inst.mnemonic)))
+        {
+            res = str8_fmt(arena, STR8_LIT("%s %s, %s %s\n"), inst.mnemonic, dest, prefix, src);
+        }
+        else
+        {
+            res = str8_fmt(arena, STR8_LIT("%s %s, %s\n"), inst.mnemonic, dest, src);
+        }
+    }
+    else
+    {
+        if (dType == OP_MEMORY || dType == OP_MEMORY_DIR)
+        {
+            res = str8_fmt(arena, STR8_LIT("%s %s %s\n"), inst.mnemonic, prefix, dest);
+        }
+        else
+        {
+            res = str8_fmt(arena, STR8_LIT("%s %s\n"), inst.mnemonic, dest);
+        }
     }
     write(fd, res.str, res.size);
 }
