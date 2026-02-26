@@ -74,7 +74,17 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
 {
     String8 header = STR8_LIT("\nFinal Registers:\n");
     write(fd, header.str, header.size);
-    u8 pos = 0;
+
+    String8 ax = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[0], regs[0], regs[0]);
+    String8 bx = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[3], regs[3], regs[3]);
+    String8 cx = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[1], regs[1], regs[1]);
+    String8 dx = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[2], regs[2], regs[2]);
+    write(fd, ax.str, ax.size);
+    write(fd, bx.str, bx.size);
+    write(fd, cx.str, cx.size);
+    write(fd, dx.str, dx.size);
+
+    u8 pos = 4;
     while (pos < 12)
     {
         String8 line = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[pos], regs[pos], regs[pos]);
