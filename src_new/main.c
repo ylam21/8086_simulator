@@ -19,6 +19,63 @@ enum start_flags
     StartFlagDisasm = 0x2,
 };
 
+static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
+{
+    u8 opcode;
+    u64 ip = 0;
+
+    t_ctx ctx = 
+    {
+        .b = buffer,
+        .current_ip = ip,
+        .seg_prefix = 0xFF,
+    };
+
+    u16 regs[14] = {0};
+    Cpu cpu = {.regs = regs};
+
+    u64 end = read_bytes;
+    while (ip < end)
+    {
+        ctx.b = &buffer[ip];
+        ctx.current_ip = ip;
+        opcode = ctx.b[0];
+        func_ptr handler = opcode_table[opcode];
+        Instruction inst = handler(&ctx);
+        print_instruction(arena, fd, inst);
+        execute_instruction(arena, fd, cpu, inst);
+        write(fd, "\n", 1);
+        arena_reset(arena);
+        ip += inst.size;
+    }
+    print_final_regs(arena, fd, cpu.regs);
+}
+
+static void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
+{
+    u8 opcode;
+    u64 ip = 0;
+    t_ctx ctx = 
+    {
+        .b = buffer,
+        .current_ip = ip,
+        .seg_prefix = 0xFF,
+    };
+    u64 end = read_bytes;
+    while (ip < end)
+    {
+        ctx.b = &buffer[ip];
+        ctx.current_ip = ip;
+        opcode = ctx.b[0];
+        func_ptr handler = opcode_table[opcode];
+        Instruction inst = handler(&ctx);
+        print_instruction(arena, fd, inst);
+        write(fd, "\n", 1);
+        arena_reset(arena);
+        ip += inst.size;
+    }
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2)
@@ -86,41 +143,13 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
     
-    u8 opcode;
-    u64 ip = 0;
-    t_ctx ctx = 
-    {
-        .b = buffer,
-        .current_ip = ip,
-        .seg_prefix = 0xFF,
-    };
-
-    u16 regs[14] = {0};
-    Cpu cpu = {.regs = regs};
-
-    u64 end = (u64)read_bytes;
-    while (ip < end)
-    {
-        ctx.b = &buffer[ip];
-        ctx.current_ip = ip;
-        opcode = ctx.b[0];
-        func_ptr handler = opcode_table[opcode];
-        Instruction inst = handler(&ctx);
-
-        print_instruction(arena, fd_out, inst);
-
-        if (StartFlags & StartFlagExecute)
-        {
-            execute_instruction(arena, fd_out, cpu, inst);
-        }
-        arena_reset(arena);
-        write(fd_out, "\n", 1);
-        ip += inst.size;
-    }
-
     if (StartFlags & StartFlagExecute)
     {
-        print_final_regs(arena, fd_out, cpu.regs);
+        execute_8086(arena, buffer, (u64)read_bytes, fd_out);
+    }
+    else
+    {
+        disasm_8086(arena, buffer, (u64)read_bytes, fd_out);
     }
 
     close(fd_out);
