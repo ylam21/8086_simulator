@@ -19,14 +19,14 @@ make all
 ```
 ### Run
 Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:
+***Execution/Simulation Mode:***
 ```sh
 bin/simulate8086 <filename> -exec
 ```
-If no flag is provided, such as:
+***Disassembly Mode:***
 ```sh
 bin/simulate8086 <filename>
 ```
-The program will output only the disassembly of the input file.<br>
 The output of the simulation will be written to `out.txt` file in the current directory.
 ### Examples:
 *(Example input)*<br>
