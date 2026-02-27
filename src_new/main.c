@@ -22,31 +22,31 @@ enum start_flags
 static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
 {
     u8 opcode;
-    u64 ip = 0;
 
     t_ctx ctx = 
     {
         .b = buffer,
-        .current_ip = ip,
+        .ip = 0,
         .seg_prefix = 0xFF,
     };
 
     u16 regs[14] = {0};
     Cpu cpu = {.regs = regs};
+    u16 regsStateOld[14] = {0}; // NOTE: buffer where we store the old state of cpu.regs
 
-    u64 end = read_bytes;
-    while (ip < end)
+    while (ctx.ip < read_bytes)
     {
-        ctx.b = &buffer[ip];
-        ctx.current_ip = ip;
+        memcpy(regsStateOld, cpu.regs, 14 * sizeof(u16)); // NOTE: save the old state of cpu.regs
+        ctx.b = &buffer[ctx.ip];
         opcode = ctx.b[0];
         func_ptr handler = opcode_table[opcode];
         Instruction inst = handler(&ctx);
+        ctx.ip += inst.size;
+        cpu.regs[12] = ctx.ip;
         print_instruction(arena, fd, inst);
-        execute_instruction(arena, fd, cpu, inst);
+        execute_instruction(arena, fd, cpu, inst, regsStateOld, &ctx);
         write(fd, "\n", 1);
         arena_reset(arena);
-        ip += inst.size;
     }
     print_final_regs(arena, fd, cpu.regs);
 }
@@ -54,25 +54,22 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
 static void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
 {
     u8 opcode;
-    u64 ip = 0;
     t_ctx ctx = 
     {
         .b = buffer,
-        .current_ip = ip,
+        .ip = 0,
         .seg_prefix = 0xFF,
     };
-    u64 end = read_bytes;
-    while (ip < end)
+    while (ctx.ip < read_bytes)
     {
-        ctx.b = &buffer[ip];
-        ctx.current_ip = ip;
+        ctx.b = &buffer[ctx.ip];
         opcode = ctx.b[0];
         func_ptr handler = opcode_table[opcode];
         Instruction inst = handler(&ctx);
+        ctx.ip += inst.size;
         print_instruction(arena, fd, inst);
         write(fd, "\n", 1);
         arena_reset(arena);
-        ip += inst.size;
     }
 }
 

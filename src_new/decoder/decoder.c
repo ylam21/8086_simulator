@@ -180,7 +180,7 @@ Instruction jump(t_ctx *ctx)
     u8 opcode = ctx->b[0];
     u8 idx = opcode & 0xF;
     s8 IP_INC8 = (s8)ctx->b[1];
-    u16 target_address = (u16)(ctx->current_ip + 2 + IP_INC8);
+    u16 target_address = (u16)(ctx->ip + 2 + IP_INC8);
     Operand dest = {.type = OP_IP_RELATIVE, .immediate_val = target_address};
     Instruction inst = {0};
     inst.mnemonic = mnemonics[idx];
@@ -777,7 +777,7 @@ Instruction loops(t_ctx *ctx)
     u8 opcode = ctx->b[0];
     u8 idx = opcode & 0x3;
     s8 disp = (s8)ctx->b[1];
-    u16 target = (u16)(ctx->current_ip + 2 + disp);
+    u16 target = (u16)(ctx->ip + 2 + disp);
     Operand dest;
     dest.type = OP_IP_RELATIVE;
     dest.immediate_val = target;
@@ -871,7 +871,7 @@ Instruction call_jmp_rel(t_ctx *ctx)
         len = 3;
         displacement = (s16)(ctx->b[1] | (ctx->b[2] << 8));
     }
-    u16 target = (u16)(ctx->current_ip + len + displacement);
+    u16 target = (u16)(ctx->ip + len + displacement);
     Operand dest;
     dest.type = OP_IMMEDIATE;
     dest.immediate_val = target;

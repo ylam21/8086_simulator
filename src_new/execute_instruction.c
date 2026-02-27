@@ -1,4 +1,6 @@
 #include "execute_instruction.h"
+#include "decoder/opcodes.h"
+#include "decoder/decoder.h"
 #include "utils/io_utils.h"
 #include <string.h>
 #include <stdbool.h>
@@ -69,28 +71,6 @@ static void mod_SF(u16 *reg, u32 res, u8 mask_dest)
     }
 }
 
-static void mod_OF(u16 *reg, u32 res, u8 mask_dest)
-{
-    u16 max;
-    if (mask_dest == MASK_WIDE)
-    {
-        max = UINT16_MAX;
-    }
-    else
-    {
-        max = UINT8_MAX;
-    }
-
-    if (res > max)
-    {
-        *reg |= (1 << POS_OF);
-    }
-    else
-    {
-        *reg &= ~(1 << POS_OF);
-    }
-}
-
 String8 create_state_of_flag_reg(Arena *arena, u16 reg)
 { 
     String8 flags = STR8_LIT("ODITSZAPC");
@@ -138,7 +118,7 @@ String8 regs_names[14] =
     STR8_LIT("ss"),
     STR8_LIT("ds"),
     STR8_LIT("ip"), // Instruction pointer register
-    STR8_LIT(""),   // flags register
+    STR8_LIT("flags"),   // flags register
 };
 
 void print_final_regs(Arena *arena, s32 fd, u16 *regs)
@@ -146,10 +126,10 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
     String8 header = STR8_LIT("\nFinal Registers:\n");
     write(fd, header.str, header.size);
 
-    u8 idx_order[12] = {0, 3, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11};
+    u8 idx_order[13] = {0, 3, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
     u8 i = 0;
-    while (i < 12)
+    while (i < 13)
     {
         u8 pos = idx_order[i];
         u16 res = regs[pos];
@@ -160,8 +140,8 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
         }
         i += 1;
     }
-    String8 flags = create_state_of_flag_reg(arena, regs[13]);
-    String8 flag_field = str8_fmt(arena, STR8_LIT("%13s%s]"), STR8_LIT("flags: ["),flags);
+    String8 flags = create_state_of_flag_reg(arena, regs[FLAGS_IDX]);
+    String8 flag_field = str8_fmt(arena, STR8_LIT("%10s: [%s]"), regs_names[FLAGS_IDX], flags);
     write(fd, flag_field.str, flag_field.size);
 }
 
@@ -252,19 +232,16 @@ static void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
     mod_ZF(reg, res);
     mod_PF(reg, res);
     mod_SF(reg, res, mask_dest);
-    mod_OF(reg, res, mask_dest);
 }
 
 #define INST_MOV STR8_LIT("mov")
 #define INST_ADD STR8_LIT("add")
 #define INST_SUB STR8_LIT("sub")
 #define INST_CMP STR8_LIT("cmp")
+#define INST_JNZ STR8_LIT("jnz")
 
-void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst)
+void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx)
 {
-    u16 regsStateOld[14] = {0};
-    memcpy(regsStateOld, cpu.regs, 14 * sizeof(u16));
-
     OperandType sType = inst.src.type;
     OperandType dType = inst.dest.type;
 
@@ -282,7 +259,8 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst)
     }
 
     u16* destRegPtr = &cpu.regs[dest_reg_idx];
-    u16* flagRegPtr = &cpu.regs[13];
+    u16* ipRegPtr = &cpu.regs[IP_IDX];
+    u16* flagRegPtr = &cpu.regs[FLAGS_IDX];
     u8 src_reg_idx;
     u8 mask_src;
     u16 src_val;
@@ -304,6 +282,7 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst)
     }
     
     u8 dont_print_flags = false;
+    u8 dont_print_regs = false;
     u16 new_val;
     if (!str8ncmp(inst.mnemonic, INST_MOV, INST_MOV.size))
     {   
@@ -319,29 +298,48 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst)
     }
     else if (!str8ncmp(inst.mnemonic, INST_SUB, INST_SUB.size))
     {
-        u32 res = masked_u16(*destRegPtr, mask_dest) + src_val;
+        u32 res = masked_u16(*destRegPtr, mask_dest) - src_val;
         new_val = (u16)res;
         modify_flag_reg(flagRegPtr, new_val, mask_dest);
         modify_reg(destRegPtr, new_val, mask_dest);
     }
     else if (!str8ncmp(inst.mnemonic, INST_CMP, INST_CMP.size))
     {
-        u32 res = masked_u16(*destRegPtr, mask_dest) + src_val;
+        u32 res = masked_u16(*destRegPtr, mask_dest) - src_val;
         new_val = (u16)res;
         modify_flag_reg(flagRegPtr, new_val, mask_dest);
+    }
+    else if (!str8ncmp(inst.mnemonic, INST_JNZ, INST_JNZ.size))
+    {
+        if (!((*flagRegPtr >> POS_ZF) & 1))
+        {
+            ctx->ip = inst.dest.immediate_val;
+            modify_reg(ipRegPtr, ctx->ip, MASK_WIDE);
+        }
+        dont_print_flags = true;
+        dont_print_regs = true;
     }
     
     u16 *regsStateNew = cpu.regs;
     String8 dest_reg_name = regs_names[dest_reg_idx];
     String8 flags;
+    String8 ip = str8_fmt(arena, STR8_LIT("ip: 0x%04x->0x%04x"), regsStateOld[IP_IDX], regsStateNew[IP_IDX]);
     if (dont_print_flags)
     {
         flags = (String8){0};
     }
     else
     {
-        flags = state_of_flags(arena, regsStateOld[13], regsStateNew[13]);
+        flags = state_of_flags(arena, regsStateOld[FLAGS_IDX], regsStateNew[FLAGS_IDX]);
     }
-    String8 res = str8_fmt(arena, STR8_LIT("%c; %s: 0x%04x->0x%04X %s"), CHAR_SPACE, dest_reg_name, regsStateOld[dest_reg_idx], regsStateNew[dest_reg_idx], flags);
+    String8 res;
+    if (dont_print_regs)
+    {
+        res = str8_fmt(arena, STR8_LIT("%c; %18c %s %s"), CHAR_SPACE, CHAR_SPACE, ip, flags);
+    }
+    else
+    {
+        res = str8_fmt(arena, STR8_LIT("%c; %s: 0x%04x->0x%04x %s %s"), CHAR_SPACE, dest_reg_name, regsStateOld[dest_reg_idx], regsStateNew[dest_reg_idx], ip, flags);
+    }
     write(fd, res.str, res.size);
 }

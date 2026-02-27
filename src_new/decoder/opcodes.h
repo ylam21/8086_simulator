@@ -11,7 +11,7 @@ struct t_ctx
 {
     u8 *b;
     u8 seg_prefix;
-    u32 current_ip;
+    u16 ip;
 }; 
 
 typedef Instruction (*func_ptr)(t_ctx *ctx); 

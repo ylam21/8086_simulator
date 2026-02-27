@@ -186,7 +186,7 @@ void print_instruction(Arena *arena, s32 fd, Instruction inst)
         }
         else
         {
-            res = str8_fmt(arena, STR8_LIT("%s"), inst.mnemonic);
+            res = str8_fmt(arena, STR8_LIT("%-5s"), inst.mnemonic);
         }
     }
     else if (src.size != 0)
@@ -208,7 +208,7 @@ void print_instruction(Arena *arena, s32 fd, Instruction inst)
         }
         else
         {
-            res = str8_fmt(arena, STR8_LIT("%s %-5s"), inst.mnemonic, dest);
+            res = str8_fmt(arena, STR8_LIT("%s %-9s"), inst.mnemonic, dest);
         }
     }
     write(fd, res.str, res.size);

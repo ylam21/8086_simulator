@@ -8,6 +8,8 @@ typedef struct t_ctx t_ctx;
 #define GET_REG(b) (((b) >> 3) & 0x7)
 #define GET_RM(b)  ((b) & 0x7)
 #define ACC_IDX 0
+#define FLAGS_IDX 13
+#define IP_IDX 12
 
 typedef enum
 {
