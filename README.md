@@ -18,12 +18,12 @@ Use the `Makefile` to build the executable:
 make all
 ```
 ### Run
-Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:
-***Execution/Simulation Mode:***
+Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:<br>
+***Execution/Simulation Mode:***<br>
 ```sh
 bin/simulate8086 <filename> -exec
 ```
-***Disassembly Mode:***
+***Disassembly Mode:***<br>
 ```sh
 bin/simulate8086 <filename>
 ```
