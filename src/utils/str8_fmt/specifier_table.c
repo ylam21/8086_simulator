@@ -1,11 +1,10 @@
 #include "str8_fmt.h"
-#include "conversion/conversion.h"
 
 fmt_handler_t specifier_table[256] =
 {
     ['d'] = handle_int,
     ['i'] = handle_int,
-    ['u'] = handle_int,
+    ['u'] = handle_uint,
     ['s'] = handle_string8,
     ['c'] = handle_char,
     ['x'] = handle_x,

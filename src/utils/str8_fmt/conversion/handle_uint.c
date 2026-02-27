@@ -1,8 +1,8 @@
 #include "conversion.h"
 
-static s32 my_itoa_buf(u8 *buf, s32 x)
+static u32 my_itoa_buf(u8 *buf, u32 x)
 {
-    s32 i = 0;
+    u32 i = 0;
     s64 nb = x;
     
     if (nb == 0)
@@ -11,17 +11,13 @@ static s32 my_itoa_buf(u8 *buf, s32 x)
         return 1;
     }
 
-    if (nb < 0) nb = -nb;
-
     u8 temp[32];
-    s32 temp_len = 0;
+    u32 temp_len = 0;
     while (nb)
     {
         temp[temp_len++] = (nb % 10) + '0';
         nb /= 10;
     }
-
-    if (x < 0) buf[i++] = '-';
     
     while (temp_len > 0)
     {
@@ -31,12 +27,12 @@ static s32 my_itoa_buf(u8 *buf, s32 x)
     return i;
 }
 
-void handle_int(Arena *arena, va_list args, t_fmt_opt opt)
+void handle_uint(Arena *arena, va_list args, t_fmt_opt opt)
 {
-    s32 val = va_arg(args, s32);
+    u32 val = va_arg(args, u32);
     u8 buffer[32]; 
 
-    s32 len = my_itoa_buf(buffer, val);
+    u32 len = my_itoa_buf(buffer, val);
     
     String8 s;
     s.str = buffer;

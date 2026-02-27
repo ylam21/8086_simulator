@@ -4,6 +4,7 @@
 #include "../str8_fmt.h"
 
 void handle_int(Arena *arena, va_list args, t_fmt_opt opt);
+void handle_uint(Arena *arena, va_list args, t_fmt_opt opt);
 void handle_x(Arena *arena, va_list args, t_fmt_opt opt);
 void handle_upx(Arena *arena, va_list args, t_fmt_opt opt);
 void handle_ptr(Arena *arena, va_list args, t_fmt_opt opt);
