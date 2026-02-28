@@ -234,23 +234,74 @@ static void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
     mod_SF(reg, res, mask_dest);
 }
 
+
+
+typedef u16 (*calcMemoryAddressFunc)(u16 *regs);
+
+u16 calc_bx_plus_si(u16 *regs);
+u16 calc_bx_plus_di(u16 *regs);
+u16 calc_bp_plus_si(u16 *regs);
+u16 calc_bp_plus_di(u16 *regs);
+u16 calc_si(u16 *regs);
+u16 calc_di(u16 *regs);
+u16 calc_bp(u16 *regs);
+u16 calc_bx(u16 *regs);
+
+calcMemoryAddressFunc calc_mem_table[8] =
+{
+    [0] = calc_bx_plus_si,
+    [1] = calc_bx_plus_di,
+    [2] = calc_bp_plus_si,
+    [3] = calc_bp_plus_di,
+    [4] = calc_si,
+    [5] = calc_di,
+    [6] = calc_bp,
+    [7] = calc_bx,
+};
+
+u16 calc_bx_plus_si(u16 *regs) {calc_bx(regs) + calc_si(regs);};
+u16 calc_bx_plus_di(u16 *regs) {calc_bx(regs) + calc_di(regs);};
+u16 calc_bp_plus_si(u16 *regs) {calc_bp(regs) + calc_si(regs);};
+u16 calc_bp_plus_di(u16 *regs) {calc_bp(regs) + calc_di(regs);};
+u16 calc_si(u16 *regs) {return regs[SI_IDX];};
+u16 calc_di(u16 *regs) {return regs[DI_IDX];};
+u16 calc_bp(u16 *regs) {return regs[BP_IDX];};
+u16 calc_bx(u16 *regs) {return regs[BX_IDX];};
+
+static u16 calc_memory_address(Operand op, Cpu *cpu)
+{
+    u16 base_address = calc_mem_table[op.mem_base_reg](&cpu->regs);
+    return base_address + op.mem_disp;
+}
+
+
 #define INST_MOV STR8_LIT("mov")
 #define INST_ADD STR8_LIT("add")
 #define INST_SUB STR8_LIT("sub")
 #define INST_CMP STR8_LIT("cmp")
 #define INST_JNZ STR8_LIT("jnz")
 
-void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx)
+void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx)
 {
     OperandType sType = inst.src.type;
     OperandType dType = inst.dest.type;
 
     u8 dest_reg_idx;
     u8 mask_dest;
+    u8 *destPtr;
     if (dType == OP_REGISTER || dType == OP_REGISTER_CL || dType == OP_REGISTER_DX)
     {
         dest_reg_idx = decode_final_reg_idx_from_reg(inst.dest, inst.w_bit);
         mask_dest = decode_mask_from_reg(inst.dest, inst.w_bit);
+    }
+    else if (dType == OP_MEMORY)
+    {
+        u16 address = calc_memory_address(inst.dest, cpu);
+        destPtr = &cpu->Memory[address];
+    }
+    else if (dType == OP_MEMORY_DIR)
+    {
+        destPtr = &cpu->Memory[inst.dest.mem_disp];
     }
     else if (dType == OP_SREG)
     {
@@ -258,9 +309,9 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst, u16 *r
         mask_dest = decode_mask_from_sreg();
     }
 
-    u16* destRegPtr = &cpu.regs[dest_reg_idx];
-    u16* ipRegPtr = &cpu.regs[IP_IDX];
-    u16* flagRegPtr = &cpu.regs[FLAGS_IDX];
+    u16* destRegPtr = &cpu->regs[dest_reg_idx];
+    u16* ipRegPtr = &cpu->regs[IP_IDX];
+    u16* flagRegPtr = &cpu->regs[FLAGS_IDX];
     u8 src_reg_idx;
     u8 mask_src;
     u16 src_val;
@@ -268,13 +319,13 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst, u16 *r
     {
         src_reg_idx = decode_final_reg_idx_from_reg(inst.src, inst.w_bit);
         mask_src = decode_mask_from_reg(inst.src, inst.w_bit);
-        src_val = masked_u16(cpu.regs[src_reg_idx], mask_src); // val is the masked 'src'
+        src_val = masked_u16(&cpu->regs[src_reg_idx], mask_src); // val is the masked 'src'
     }
     else if (sType == OP_SREG)
     {
         src_reg_idx = decode_final_reg_idx_from_sreg(inst.src);
         mask_src = decode_mask_from_sreg();
-        src_val = masked_u16(cpu.regs[src_reg_idx], mask_src);
+        src_val = masked_u16(&cpu->regs[src_reg_idx], mask_src);
     }
     else if (sType == OP_IMMEDIATE)
     {
@@ -320,7 +371,7 @@ void execute_instruction(Arena *arena, s32 fd, Cpu cpu, Instruction inst, u16 *r
         dont_print_regs = true;
     }
     
-    u16 *regsStateNew = cpu.regs;
+    u16 *regsStateNew = &cpu->regs;
     String8 dest_reg_name = regs_names[dest_reg_idx];
     String8 flags;
     String8 ip = str8_fmt(arena, STR8_LIT("ip: 0x%04x->0x%04x"), regsStateOld[IP_IDX], regsStateNew[IP_IDX]);

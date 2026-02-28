@@ -30,8 +30,12 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
         .seg_prefix = 0xFF,
     };
 
-    u16 regs[14] = {0};
-    Cpu cpu = {.regs = regs};
+    Cpu cpu =
+    {
+        .regs = {0},
+        .Memory = {0},
+    };
+
     u16 regsStateOld[14] = {0}; // NOTE: buffer where we store the old state of cpu.regs
 
     while (ctx.ip < read_bytes)
@@ -44,7 +48,7 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
         ctx.ip += inst.size;
         cpu.regs[12] = ctx.ip;
         print_instruction(arena, fd, inst);
-        execute_instruction(arena, fd, cpu, inst, regsStateOld, &ctx);
+        execute_instruction(arena, fd, &cpu, inst, regsStateOld, &ctx);
         write(fd, "\n", 1);
         arena_reset(arena);
     }

@@ -16,6 +16,8 @@ typedef struct Arena Arena;
 typedef struct String8 String8;
 typedef struct Cpu Cpu;
 
+#define MegaByte(d) ((d) << 20)
+
 struct String8
 {
     u64 size;
@@ -24,7 +26,8 @@ struct String8
 
 struct Cpu
 {
-    u16 *regs;
+    u16 regs[14];
+    u8 Memory[MegaByte(1)];
 };
 
 
