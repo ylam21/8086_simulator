@@ -203,7 +203,7 @@ Instruction xchg_reg16_to_acc(t_ctx *ctx)
     {
         inst.mnemonic = STR8_LIT("xchg");
         inst.w_bit = 1;
-        inst.dest = decode_operand_reg(ACC_IDX);
+        inst.dest = decode_operand_reg(AX_IDX);
         inst.src = decode_operand_reg(REG);
     }
     inst.size = 1;
@@ -326,7 +326,7 @@ Instruction imm_to_acc(t_ctx *ctx)
 
     Instruction inst = {0};
     inst.mnemonic = mnemonics[idx];
-    inst.dest = decode_operand_reg(ACC_IDX);
+    inst.dest = decode_operand_reg(AX_IDX);
     inst.src = decode_operand_imm(0, W, &ctx->b[1]);
     inst.w_bit = W;
     if (W == 0)
@@ -479,13 +479,13 @@ Instruction mov_mem_to_acc(t_ctx *ctx)
     Operand src;
     if (D == 0)
     {
-        dest = decode_operand_reg(ACC_IDX);
+        dest = decode_operand_reg(AX_IDX);
         src = decode_operand_mem(W, ctx->b[1], ctx->b[2]);
     }
     else        
     {
         dest = decode_operand_mem(W, ctx->b[1], ctx->b[2]);
-        src = decode_operand_reg(ACC_IDX);
+        src = decode_operand_reg(AX_IDX);
     }
     Instruction inst = {0};
     inst.mnemonic = STR8_LIT("mov");
@@ -539,7 +539,7 @@ Instruction test_imm_to_acc(t_ctx *ctx)
     u8 W = opcode & 1;
     Instruction inst = {0};
     inst.mnemonic = STR8_LIT("test");
-    inst.dest = decode_operand_reg(ACC_IDX);
+    inst.dest = decode_operand_reg(AX_IDX);
     inst.src = decode_operand_imm(0, W, &ctx->b[1]);
     inst.w_bit = W;
     if (W == 0)
@@ -804,11 +804,11 @@ Instruction in_out_dx_to_acc(t_ctx *ctx)
     {
         dest.type = OP_REGISTER_DX;
         dest.reg_idx = 2;  // idx for "dx" register table
-        src = decode_operand_reg(ACC_IDX);
+        src = decode_operand_reg(AX_IDX);
     }
     else
     {
-        dest = decode_operand_reg(ACC_IDX);
+        dest = decode_operand_reg(AX_IDX);
         src.type = OP_REGISTER_DX;
         src.reg_idx = 2;
     }
@@ -834,12 +834,12 @@ Instruction in_out_imm8_to_acc(t_ctx *ctx)
         inst.mnemonic = STR8_LIT("out");
         dest.type = OP_IMMEDIATE;
         dest.immediate_val = ctx->b[1];
-        src = decode_operand_reg(ACC_IDX);
+        src = decode_operand_reg(AX_IDX);
     }
     else
     {
         inst.mnemonic = STR8_LIT("in");
-        dest = decode_operand_reg(ACC_IDX);
+        dest = decode_operand_reg(AX_IDX);
         src.type = OP_IMMEDIATE;
         src.immediate_val = ctx->b[1];
     }

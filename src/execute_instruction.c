@@ -299,6 +299,7 @@ static u16 calc_memory_address(Operand op, Cpu *cpu)
 #define INST_SUB STR8_LIT("sub")
 #define INST_CMP STR8_LIT("cmp")
 #define INST_JNZ STR8_LIT("jnz")
+#define INST_LOOP STR8_LIT("loop")
 
 void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx)
 {
@@ -332,6 +333,7 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     }
 
     u16* ipRegPtr = &cpu->regs[IP_IDX];
+    u16* cxRegPtr = &cpu->regs[CX_IDX];
     u16* flagRegPtr = &cpu->regs[FLAGS_IDX];
     u8 src_reg_idx;
     u8 mask_src;
@@ -399,6 +401,19 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
         }
         dont_print_flags = true;
         dont_print_regs = true;
+    }
+    else if (!str8ncmp(inst.mnemonic, INST_LOOP, INST_LOOP.size))
+    {
+        dType = OP_REGISTER;
+        dest_reg_idx = CX_IDX;
+        u16 cx_dec = *cxRegPtr - 1;
+        modifyDest(cxRegPtr, cx_dec, MASK_WIDE, OP_REGISTER);
+        mod_ZF(flagRegPtr, cx_dec);
+        if (!((*flagRegPtr >> POS_ZF) & 1))
+        {
+            ctx->ip = inst.dest.immediate_val;
+            modifyDest(ipRegPtr, ctx->ip, MASK_WIDE, dType);
+        }
     }
     
     u16 *regsStateNew = cpu->regs;

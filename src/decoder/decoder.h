@@ -7,7 +7,7 @@ typedef struct t_ctx t_ctx;
 #define GET_MOD(b) (((b) >> 6) & 0x3)
 #define GET_REG(b) (((b) >> 3) & 0x7)
 #define GET_RM(b)  ((b) & 0x7)
-#define ACC_IDX 0 // TODO: RENAME TO AX_IDX
+#define AX_IDX 0 
 #define CX_IDX 1
 #define DX_IDX 2
 #define BX_IDX 3

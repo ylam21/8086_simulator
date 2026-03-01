@@ -21,6 +21,20 @@ enum start_flags
     StartFlagDump = 0x4,
 };
 
+static void write_memory(u8 *memory, u64 size)
+{
+    const char *filename = "sim86_memory.data";
+    s32 fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    if (fd == -1)
+    {
+        perror(filename);
+        return;
+    }
+    s32 written = write(fd, memory, size);
+    if (written == -1) return;
+    fprintf(stdout, "Written dump data to: \"%s\"\n", filename);
+}
+
 static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 startFlags)
 {
     u8 opcode;
@@ -51,22 +65,16 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 st
         cpu.regs[12] = ctx.ip;
         print_instruction(arena, fd, inst);
         execute_instruction(arena, fd, &cpu, inst, regsStateOld, &ctx);
-        write(fd, "\n", 1);
+        s32 written = write(fd, "\n", 1);
+        if (written == -1) return;
+        
         arena_reset(arena);
     }
     print_final_regs(arena, fd, cpu.regs);
 
     if ((startFlags >> MASK_DUMP) & 1)
     {
-        const char *filename = "sim86_memory.data";
-        s32 fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
-        if (fd == -1)
-        {
-            perror(filename);
-            return;
-        }
-        write(fd, cpu.Memory, MegaByte(1));
-        fprintf(stdout, "Written dump data to: \"%s\"\n", filename);
+        write_memory(cpu.Memory, MegaByte(1));
     }
 }
 
@@ -87,7 +95,8 @@ static void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
         Instruction inst = handler(&ctx);
         ctx.ip += inst.size;
         print_instruction(arena, fd, inst);
-        write(fd, "\n", 1);
+        s32 written = write(fd, "\n", 1);
+        if (written == -1) return;
         arena_reset(arena);
     }
 }
@@ -104,6 +113,7 @@ int main(int argc, char **argv)
 
     u8 idx = 0;
     char *arg = argv[idx];
+    const char *filename = NULL;
     while (arg)
     {
         if (strcmp(arg, "-exec") == 0)
@@ -118,12 +128,15 @@ int main(int argc, char **argv)
         {
             StartFlags |= StartFlagDisasm;
         }
+        else if (arg[0] != '-')
+        {
+            filename = arg;
+        }
 
         idx += 1;
         arg = argv[idx];
     }
 
-    char *filename = argv[1];
     s32 fd_in = open(filename, O_RDONLY);
     if (fd_in == -1)
     {
@@ -158,7 +171,8 @@ int main(int argc, char **argv)
     }
 
     String8 header = STR8_LIT("bits 16\n\n");
-    write(fd_out, header.str, header.size);
+    s32 written = write(fd_out, header.str, header.size);
+    if (written == -1) return EXIT_FAILURE;
 
     Arena *arena = arena_create(1024);
     if (!arena)
