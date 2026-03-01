@@ -100,7 +100,7 @@ String8 state_of_flags(Arena *arena, u16 reg_old, u16 reg_new)
 {
     String8 state_old = create_state_of_flag_reg(arena, reg_old);
     String8 state_new = create_state_of_flag_reg(arena, reg_new);
-    return str8_fmt(arena, STR8_LIT("[%s]->[%s]"), state_old, state_new);
+    return str8_fmt(arena, STR8_LIT(" [%s]->[%s]"), state_old, state_new);
 }
 
 String8 regs_names[14] =
@@ -141,33 +141,36 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
         i += 1;
     }
     String8 flags = create_state_of_flag_reg(arena, regs[FLAGS_IDX]);
-    String8 flag_field = str8_fmt(arena, STR8_LIT("%10s: [%s]"), regs_names[FLAGS_IDX], flags);
+    String8 flag_field;
+    if (regs[FLAGS_IDX])
+    {
+        flag_field = str8_fmt(arena, STR8_LIT("%10s: [%s]"), regs_names[FLAGS_IDX], flags);
+    }
+    else
+    {
+        flag_field = (String8){0};
+    }
     write(fd, flag_field.str, flag_field.size);
 }
 
-static void modify_reg(u16 *reg, u16 val, u8 mask)
+static void modifyDest(u16 *destPtr, u16 val, u8 mask)
 {
     if (mask == MASK_WIDE)
     {
-        *reg = val;
+        *destPtr = val;
     }
     else if (mask == MASK_LOW)
     {
-        *reg = (*reg & 0xFF00) | val;
+        *destPtr = (*destPtr & 0xFF00) | val;
     }
     else if (mask == MASK_HIGH)
     {
-        *reg = (*reg & 0x00FF) | (val << 8);
+        *destPtr = (*destPtr & 0x00FF) | (val << 8);
     }
     else
     {
         fprintf(stderr, "Error: mask flag has garbage value\n");
     }
-}
-
-u8 decode_mask_from_sreg(void)
-{
-    return MASK_WIDE;
 }
 
 u8 decode_mask_from_reg(Operand reg, u8 W)
@@ -234,8 +237,6 @@ static void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
     mod_SF(reg, res, mask_dest);
 }
 
-
-
 typedef u16 (*calcMemoryAddressFunc)(u16 *regs);
 
 u16 calc_bx_plus_si(u16 *regs);
@@ -259,10 +260,10 @@ calcMemoryAddressFunc calc_mem_table[8] =
     [7] = calc_bx,
 };
 
-u16 calc_bx_plus_si(u16 *regs) {calc_bx(regs) + calc_si(regs);};
-u16 calc_bx_plus_di(u16 *regs) {calc_bx(regs) + calc_di(regs);};
-u16 calc_bp_plus_si(u16 *regs) {calc_bp(regs) + calc_si(regs);};
-u16 calc_bp_plus_di(u16 *regs) {calc_bp(regs) + calc_di(regs);};
+u16 calc_bx_plus_si(u16 *regs) {return regs[BX_IDX] + regs[SI_IDX];};
+u16 calc_bx_plus_di(u16 *regs) {return regs[BX_IDX] + regs[DI_IDX];};
+u16 calc_bp_plus_si(u16 *regs) {return regs[BP_IDX] + regs[SI_IDX];};
+u16 calc_bp_plus_di(u16 *regs) {return regs[BP_IDX] + regs[DI_IDX];};
 u16 calc_si(u16 *regs) {return regs[SI_IDX];};
 u16 calc_di(u16 *regs) {return regs[DI_IDX];};
 u16 calc_bp(u16 *regs) {return regs[BP_IDX];};
@@ -270,10 +271,9 @@ u16 calc_bx(u16 *regs) {return regs[BX_IDX];};
 
 static u16 calc_memory_address(Operand op, Cpu *cpu)
 {
-    u16 base_address = calc_mem_table[op.mem_base_reg](&cpu->regs);
+    u16 base_address = calc_mem_table[op.mem_base_reg](cpu->regs);
     return base_address + op.mem_disp;
 }
-
 
 #define INST_MOV STR8_LIT("mov")
 #define INST_ADD STR8_LIT("add")
@@ -286,95 +286,105 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     OperandType sType = inst.src.type;
     OperandType dType = inst.dest.type;
 
-    u8 dest_reg_idx;
-    u8 mask_dest;
-    u8 *destPtr;
+    u8 dest_reg_idx, mask_dest;
+    u16 *destPtr;
     if (dType == OP_REGISTER || dType == OP_REGISTER_CL || dType == OP_REGISTER_DX)
     {
         dest_reg_idx = decode_final_reg_idx_from_reg(inst.dest, inst.w_bit);
+        destPtr = &cpu->regs[dest_reg_idx];
         mask_dest = decode_mask_from_reg(inst.dest, inst.w_bit);
     }
     else if (dType == OP_MEMORY)
     {
         u16 address = calc_memory_address(inst.dest, cpu);
+        mask_dest = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
         destPtr = &cpu->Memory[address];
     }
     else if (dType == OP_MEMORY_DIR)
     {
         destPtr = &cpu->Memory[inst.dest.mem_disp];
+        mask_dest = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
     }
     else if (dType == OP_SREG)
     {
         dest_reg_idx = decode_final_reg_idx_from_sreg(inst.dest); 
-        mask_dest = decode_mask_from_sreg();
+        destPtr = &cpu->regs[dest_reg_idx];
+        mask_dest = MASK_WIDE;
     }
 
-    u16* destRegPtr = &cpu->regs[dest_reg_idx];
     u16* ipRegPtr = &cpu->regs[IP_IDX];
     u16* flagRegPtr = &cpu->regs[FLAGS_IDX];
     u8 src_reg_idx;
     u8 mask_src;
-    u16 src_val;
+    u16 src_val = 0;
     if (sType == OP_REGISTER || sType == OP_REGISTER_CL || sType == OP_REGISTER_DX)
     {
         src_reg_idx = decode_final_reg_idx_from_reg(inst.src, inst.w_bit);
         mask_src = decode_mask_from_reg(inst.src, inst.w_bit);
-        src_val = masked_u16(&cpu->regs[src_reg_idx], mask_src); // val is the masked 'src'
+        src_val = masked_u16(cpu->regs[src_reg_idx], mask_src); // val is the masked 'src'
     }
     else if (sType == OP_SREG)
     {
         src_reg_idx = decode_final_reg_idx_from_sreg(inst.src);
-        mask_src = decode_mask_from_sreg();
-        src_val = masked_u16(&cpu->regs[src_reg_idx], mask_src);
+        mask_src = MASK_WIDE;
+        src_val = masked_u16(cpu->regs[src_reg_idx], mask_src);
     }
     else if (sType == OP_IMMEDIATE)
     {
         src_val = inst.src.immediate_val;
     }
+    else if (sType == OP_MEMORY)
+    {
+        u16 address = calc_memory_address(inst.src, cpu);
+        mask_src = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
+        src_val = masked_u16(cpu->Memory[address], mask_src);
+    }
+    else if (sType == OP_MEMORY_DIR)
+    {
+        mask_src = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
+        src_val = masked_u16(cpu->Memory[inst.src.mem_disp], mask_src);
+    }
     
     u8 dont_print_flags = false;
     u8 dont_print_regs = false;
-    u16 new_val;
+    u16 new_val = 0;
     if (!str8ncmp(inst.mnemonic, INST_MOV, INST_MOV.size))
     {   
-        modify_reg(destRegPtr, src_val, mask_dest);
+        modifyDest(destPtr, src_val, mask_dest);
         dont_print_flags = true;
     }
     else if (!str8ncmp(inst.mnemonic, INST_ADD, INST_ADD.size))
     {
-        u32 res = masked_u16(*destRegPtr, mask_dest) + src_val;
-        new_val = (u16)res;
-        modify_flag_reg(flagRegPtr, new_val, mask_dest);
-        modify_reg(destRegPtr, new_val, mask_dest);
+        u32 res = (u32)masked_u16(*destPtr, mask_dest) + (u32)src_val;
+        modify_flag_reg(flagRegPtr, res, mask_dest);
+        modifyDest(destPtr, (u16)res, mask_dest);
     }
     else if (!str8ncmp(inst.mnemonic, INST_SUB, INST_SUB.size))
     {
-        u32 res = masked_u16(*destRegPtr, mask_dest) - src_val;
-        new_val = (u16)res;
-        modify_flag_reg(flagRegPtr, new_val, mask_dest);
-        modify_reg(destRegPtr, new_val, mask_dest);
+        u32 res = (u32)masked_u16(*destPtr, mask_dest) - (u32)src_val;
+        modify_flag_reg(flagRegPtr, res, mask_dest);
+        modifyDest(destPtr, (u16)res, mask_dest);
     }
     else if (!str8ncmp(inst.mnemonic, INST_CMP, INST_CMP.size))
     {
-        u32 res = masked_u16(*destRegPtr, mask_dest) - src_val;
-        new_val = (u16)res;
-        modify_flag_reg(flagRegPtr, new_val, mask_dest);
+        u32 res = (u32)masked_u16(*destPtr, mask_dest) - (u32)src_val;
+        modify_flag_reg(flagRegPtr, res, mask_dest);
+        dont_print_regs = true;
     }
     else if (!str8ncmp(inst.mnemonic, INST_JNZ, INST_JNZ.size))
     {
         if (!((*flagRegPtr >> POS_ZF) & 1))
         {
             ctx->ip = inst.dest.immediate_val;
-            modify_reg(ipRegPtr, ctx->ip, MASK_WIDE);
+            modifyDest(ipRegPtr, ctx->ip, MASK_WIDE);
         }
         dont_print_flags = true;
         dont_print_regs = true;
     }
     
-    u16 *regsStateNew = &cpu->regs;
-    String8 dest_reg_name = regs_names[dest_reg_idx];
-    String8 flags;
-    String8 ip = str8_fmt(arena, STR8_LIT("ip: 0x%04x->0x%04x"), regsStateOld[IP_IDX], regsStateNew[IP_IDX]);
+    u16 *regsStateNew = cpu->regs;
+    String8 res, regs, flags;
+    String8 ip = str8_fmt(arena, STR8_LIT(" ip: 0x%04x->0x%04x"), regsStateOld[IP_IDX], regsStateNew[IP_IDX]);
     if (dont_print_flags)
     {
         flags = (String8){0};
@@ -383,14 +393,16 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     {
         flags = state_of_flags(arena, regsStateOld[FLAGS_IDX], regsStateNew[FLAGS_IDX]);
     }
-    String8 res;
-    if (dont_print_regs)
+    if (dont_print_regs || (dType != OP_REGISTER && dType != OP_REGISTER_CL && dType != OP_REGISTER_DX))
     {
-        res = str8_fmt(arena, STR8_LIT("%c; %18c %s %s"), CHAR_SPACE, CHAR_SPACE, ip, flags);
+        regs = str8_fmt(arena, STR8_LIT(" %18c"), CHAR_SPACE);
     }
     else
     {
-        res = str8_fmt(arena, STR8_LIT("%c; %s: 0x%04x->0x%04x %s %s"), CHAR_SPACE, dest_reg_name, regsStateOld[dest_reg_idx], regsStateNew[dest_reg_idx], ip, flags);
+        regs = str8_fmt(arena, STR8_LIT(" %s: 0x%04x->0x%04x"), regs_names[dest_reg_idx], regsStateOld[dest_reg_idx], regsStateNew[dest_reg_idx]);
     }
+
+    res = str8_fmt(arena, STR8_LIT(" ;%s%s%s"), regs, ip, flags);
+
     write(fd, res.str, res.size);
 }

@@ -186,30 +186,32 @@ void print_instruction(Arena *arena, s32 fd, Instruction inst)
         }
         else
         {
-            res = str8_fmt(arena, STR8_LIT("%-5s"), inst.mnemonic);
+            res = str8_fmt(arena, STR8_LIT("%s"), inst.mnemonic);
         }
     }
     else if (src.size != 0)
     {   
         if ((dType == OP_MEMORY || dType == OP_MEMORY_DIR) && (sType == OP_IMMEDIATE || is_shift(inst.mnemonic)))
         {
-            res = str8_fmt(arena, STR8_LIT("%s %s, %s %-5s"), inst.mnemonic, dest, prefix, src);
+            res = str8_fmt(arena, STR8_LIT("%s %s, %s %s"), inst.mnemonic, dest, prefix, src);
         }
         else
         {
-            res = str8_fmt(arena, STR8_LIT("%s %s, %-5s"), inst.mnemonic, dest, src);
+            res = str8_fmt(arena, STR8_LIT("%s %s, %s"), inst.mnemonic, dest, src);
         }
     }
     else
     {
         if (dType == OP_MEMORY || dType == OP_MEMORY_DIR)
         {
-            res = str8_fmt(arena, STR8_LIT("%s %s %-5s"), inst.mnemonic, prefix, dest);
+            res = str8_fmt(arena, STR8_LIT("%s %s %s"), inst.mnemonic, prefix, dest);
         }
         else
         {
-            res = str8_fmt(arena, STR8_LIT("%s %-9s"), inst.mnemonic, dest);
+            res = str8_fmt(arena, STR8_LIT("%s %s"), inst.mnemonic, dest);
         }
     }
-    write(fd, res.str, res.size);
+
+    String8 padded_res = str8_fmt(arena, STR8_LIT("%-22s"), res);
+    write(fd, padded_res.str, padded_res.size);
 }

@@ -154,7 +154,7 @@ int main(int argc, char **argv)
     }
 
     close(fd_out);
-    fprintf(stdout, "Output written to: \"%s\"\n", filename_out);
+    fprintf(stdout, "Written output to: \"%s\"\n", filename_out);
     arena_destroy(arena);
     return (EXIT_SUCCESS);
 }
