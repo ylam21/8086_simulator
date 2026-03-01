@@ -665,7 +665,7 @@ Instruction handle_interrupt(t_ctx *ctx)
     u8 idx = opcode & 0x3;
     Instruction inst = {0};
     inst.mnemonic = mnemonics[idx];
-    Operand dest;
+    Operand dest = {0};
     dest.type = OP_IMMEDIATE;
     if (idx == 0)
     {
@@ -778,7 +778,7 @@ Instruction loops(t_ctx *ctx)
     u8 idx = opcode & 0x3;
     s8 disp = (s8)ctx->b[1];
     u16 target = (u16)(ctx->ip + 2 + disp);
-    Operand dest;
+    Operand dest = {0};
     dest.type = OP_IP_RELATIVE;
     dest.immediate_val = target;
     Instruction inst = {0};
@@ -872,7 +872,7 @@ Instruction call_jmp_rel(t_ctx *ctx)
         displacement = (s16)(ctx->b[1] | (ctx->b[2] << 8));
     }
     u16 target = (u16)(ctx->ip + len + displacement);
-    Operand dest;
+    Operand dest = {0};
     dest.type = OP_IMMEDIATE;
     dest.immediate_val = target;
     inst.dest = dest;

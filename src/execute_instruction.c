@@ -124,7 +124,8 @@ String8 regs_names[14] =
 void print_final_regs(Arena *arena, s32 fd, u16 *regs)
 {
     String8 header = STR8_LIT("\nFinal Registers:\n");
-    write(fd, header.str, header.size);
+    s32 written = write(fd, header.str, header.size);
+    if (written == -1) return;
 
     u8 idx_order[13] = {0, 3, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 
@@ -136,7 +137,8 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
         if (res)
         {
             String8 line = str8_fmt(arena, STR8_LIT("%10s: 0x%04x (%d)\n"), regs_names[pos], regs[pos], regs[pos]);
-            write(fd, line.str, line.size);
+            written = write(fd, line.str, line.size);
+            if (written == -1) return;
         }
         i += 1;
     }
@@ -150,7 +152,8 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
     {
         flag_field = (String8){0};
     }
-    write(fd, flag_field.str, flag_field.size);
+    written = write(fd, flag_field.str, flag_field.size);
+    if (written == -1) return;
 }
 
 static void modifyDest(u16 *destPtr, u16 val, u8 mask, OperandType dType)
@@ -306,8 +309,9 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     OperandType sType = inst.src.type;
     OperandType dType = inst.dest.type;
 
-    u8 dest_reg_idx, mask_dest;
-    u16 *destPtr;
+    u8 dest_reg_idx = 0;
+    u8 mask_dest = 0;
+    u16 *destPtr = 0;
     if (dType == OP_REGISTER || dType == OP_REGISTER_CL || dType == OP_REGISTER_DX)
     {
         dest_reg_idx = decode_final_reg_idx_from_reg(inst.dest, inst.w_bit);
@@ -318,11 +322,11 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     {
         u16 address = calc_memory_address(inst.dest, cpu);
         mask_dest = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
-        destPtr = &cpu->Memory[address];
+        destPtr = (u16*)&cpu->Memory[address];
     }
     else if (dType == OP_MEMORY_DIR)
     {
-        destPtr = &cpu->Memory[inst.dest.mem_disp];
+        destPtr = (u16*)&cpu->Memory[inst.dest.mem_disp];
         mask_dest = inst.w_bit == 1 ? MASK_WIDE : MASK_HIGH;
     }
     else if (dType == OP_SREG)
@@ -335,8 +339,8 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     u16* ipRegPtr = &cpu->regs[IP_IDX];
     u16* cxRegPtr = &cpu->regs[CX_IDX];
     u16* flagRegPtr = &cpu->regs[FLAGS_IDX];
-    u8 src_reg_idx;
-    u8 mask_src;
+    u8 src_reg_idx = 0;
+    u8 mask_src = 0;
     u16 src_val = 0;
     if (sType == OP_REGISTER || sType == OP_REGISTER_CL || sType == OP_REGISTER_DX)
     {
@@ -368,7 +372,6 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     
     u8 dont_print_flags = false;
     u8 dont_print_regs = false;
-    u16 new_val = 0;
     if (!str8ncmp(inst.mnemonic, INST_MOV, INST_MOV.size))
     {   
         modifyDest(destPtr, src_val, mask_dest, dType);
@@ -438,5 +441,6 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
 
     res = str8_fmt(arena, STR8_LIT(" ;%s%s%s"), regs, ip, flags);
 
-    write(fd, res.str, res.size);
+    s32 written = write(fd, res.str, res.size);
+    if (written == -1) return;
 }

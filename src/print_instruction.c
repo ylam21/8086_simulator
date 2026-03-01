@@ -213,5 +213,6 @@ void print_instruction(Arena *arena, s32 fd, Instruction inst)
     }
 
     String8 padded_res = str8_fmt(arena, STR8_LIT("%-28s"), res);
-    write(fd, padded_res.str, padded_res.size);
+    s32 written = write(fd, padded_res.str, padded_res.size);
+    if (written == -1) return;
 }
