@@ -1,7 +1,7 @@
 # 8086 Simulator
 The program can run in 2 different modes.<br>
 **The first mode** is disassembly mode - program will convert binary machine code into readable assembly.<br>
-**The second mode** is simulation/execution mode - program will simulate 8086 CPU. Such that is stores and updates all states of the cpu's registers. It processes a binary machine code file, converts into readable assembly and annotates every line with the state change of the destination register and the state change of flag and ip registers. It also outputs the final state of all registers.
+**The second mode** is simulation/execution mode - program will simulate 8086 CPU. Such that it stores and updates all states of the cpu's registers. It processes a binary machine code file, converts into readable assembly and annotates every line with the state change of the destination register and the state change of flag and ip registers. It also outputs the final state of all registers that store non-zero value.
 
 ## Context
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
