@@ -153,23 +153,42 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
     write(fd, flag_field.str, flag_field.size);
 }
 
-static void modifyDest(u16 *destPtr, u16 val, u8 mask)
+static void modifyDest(u16 *destPtr, u16 val, u8 mask, OperandType dType)
 {
-    if (mask == MASK_WIDE)
+    if (dType == OP_MEMORY || dType == OP_MEMORY_DIR)
     {
-        *destPtr = val;
-    }
-    else if (mask == MASK_LOW)
-    {
-        *destPtr = (*destPtr & 0xFF00) | val;
-    }
-    else if (mask == MASK_HIGH)
-    {
-        *destPtr = (*destPtr & 0x00FF) | (val << 8);
+        if (mask == MASK_WIDE)
+        {
+            *destPtr = val;
+        }
+        else if (mask == MASK_HIGH)
+        {
+            *(u8*)destPtr = (u8)val;
+        }
+        else
+        {
+            fprintf(stderr, "Error: mask flag has garbage value\n");
+        }
     }
     else
     {
-        fprintf(stderr, "Error: mask flag has garbage value\n");
+
+        if (mask == MASK_WIDE)
+        {
+            *destPtr = val;
+        }
+        else if (mask == MASK_LOW)
+        {
+            *destPtr = (*destPtr & 0xFF00) | val;
+        }
+        else if (mask == MASK_HIGH)
+        {
+            *destPtr = (*destPtr & 0x00FF) | (val << 8);
+        }
+        else
+        {
+            fprintf(stderr, "Error: mask flag has garbage value\n");
+        }
     }
 }
 
@@ -350,20 +369,20 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
     u16 new_val = 0;
     if (!str8ncmp(inst.mnemonic, INST_MOV, INST_MOV.size))
     {   
-        modifyDest(destPtr, src_val, mask_dest);
+        modifyDest(destPtr, src_val, mask_dest, dType);
         dont_print_flags = true;
     }
     else if (!str8ncmp(inst.mnemonic, INST_ADD, INST_ADD.size))
     {
         u32 res = (u32)masked_u16(*destPtr, mask_dest) + (u32)src_val;
         modify_flag_reg(flagRegPtr, res, mask_dest);
-        modifyDest(destPtr, (u16)res, mask_dest);
+        modifyDest(destPtr, (u16)res, mask_dest, dType);
     }
     else if (!str8ncmp(inst.mnemonic, INST_SUB, INST_SUB.size))
     {
         u32 res = (u32)masked_u16(*destPtr, mask_dest) - (u32)src_val;
         modify_flag_reg(flagRegPtr, res, mask_dest);
-        modifyDest(destPtr, (u16)res, mask_dest);
+        modifyDest(destPtr, (u16)res, mask_dest, dType);
     }
     else if (!str8ncmp(inst.mnemonic, INST_CMP, INST_CMP.size))
     {
@@ -376,7 +395,7 @@ void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *
         if (!((*flagRegPtr >> POS_ZF) & 1))
         {
             ctx->ip = inst.dest.immediate_val;
-            modifyDest(ipRegPtr, ctx->ip, MASK_WIDE);
+            modifyDest(ipRegPtr, ctx->ip, MASK_WIDE, dType);
         }
         dont_print_flags = true;
         dont_print_regs = true;

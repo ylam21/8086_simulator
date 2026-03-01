@@ -10,16 +10,18 @@
 #include "print_instruction.h"
 #include "execute_instruction.h"
 
-#define MASK_EXECUTE 0x1
-#define MASK_DISASM 0x2
+#define MASK_EXECUTE 0
+#define MASK_DISASM 1
+#define MASK_DUMP 2
 
 enum start_flags
 {
     StartFlagExecute = 0x1,
     StartFlagDisasm = 0x2,
+    StartFlagDump = 0x4,
 };
 
-static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
+static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 startFlags)
 {
     u8 opcode;
 
@@ -53,6 +55,19 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
         arena_reset(arena);
     }
     print_final_regs(arena, fd, cpu.regs);
+
+    if ((startFlags >> MASK_DUMP) & 1)
+    {
+        const char *filename = "sim86_memory.data";
+        s32 fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+        if (fd == -1)
+        {
+            perror(filename);
+            return;
+        }
+        write(fd, cpu.Memory, MegaByte(1));
+        fprintf(stdout, "Written dump data to: \"%s\"\n", filename);
+    }
 }
 
 static void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
@@ -93,9 +108,17 @@ int main(int argc, char **argv)
     {
         if (strcmp(arg, "-exec") == 0)
         {
-            StartFlags = 0;
             StartFlags |= StartFlagExecute;
         }
+        else if (strcmp(arg, "-dump") == 0)
+        {
+            StartFlags |= StartFlagDump;
+        }
+        else if (strcmp(arg, "-disasm") == 0)
+        {
+            StartFlags |= StartFlagDisasm;
+        }
+
         idx += 1;
         arg = argv[idx];
     }
@@ -146,7 +169,7 @@ int main(int argc, char **argv)
     
     if (StartFlags & StartFlagExecute)
     {
-        execute_8086(arena, buffer, (u64)read_bytes, fd_out);
+        execute_8086(arena, buffer, (u64)read_bytes, fd_out, StartFlags);
     }
     else
     {
