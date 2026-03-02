@@ -5,6 +5,8 @@ a.out
 out.txt
 out.asm
 
+*.d
 *.env
 *.data
 *.gdb_history
+compile_commands.json

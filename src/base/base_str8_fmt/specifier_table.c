@@ -1,5 +1,3 @@
-#include "str8_fmt.h"
-
 fmt_handler_t specifier_table[256] =
 {
     ['d'] = handle_int,

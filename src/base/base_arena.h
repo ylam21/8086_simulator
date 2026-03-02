@@ -1,11 +1,5 @@
-#ifndef ARENA_H
-#define ARENA_H
-
-#include "../common.h"
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-
+#ifndef BASE_ARENA_H
+#define BASE_ARENA_H
 
 #define DEFAULT_ALIGNMENT (u64)sizeof(void *)
 

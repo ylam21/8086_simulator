@@ -1,5 +1,3 @@
-#include "arena.h"
-
 Arena *arena_create(u64 size)
 {
     Arena *arena;

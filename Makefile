@@ -2,33 +2,24 @@ NAME        := simulate8086
 CC          := gcc
 
 SRC_DIR     := src
-BUILD_DIR   := build
-BIN_DIR     := bin
+TARGET      := $(NAME)
 
-TARGET      := $(BIN_DIR)/$(NAME)
-
-INC_DIRS    := $(shell find $(SRC_DIR) -type d)
-CFLAGS      := -Wall -Wextra -MMD -MP -g -fsanitize=address $(addprefix -I,$(INC_DIRS))
+CFLAGS      := -Wall -Wextra -MMD -MP -g -fsanitize=address
 OFLAGS      := -O3 -mpopcnt
 
-SRCS        := $(shell find $(SRC_DIR) -name "*.c")
-OBJS        := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
+OBJ         := src/main.o
 
 all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	@mkdir -p $(BIN_DIR)
+$(TARGET): src/main.c
 	$(CC) $(CFLAGS) $(OFLAGS) $^ -o $@
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(OFLAGS) -c $< -o $@
+-include $(OBJ:.o=.d)
 
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR)
+	rm -rf $(TARGET)
+	rm -rf src/*d src/*.o
 
 re: clean all
-
--include $(OBJS:.o=.d)
 
 .PHONY: all clean re

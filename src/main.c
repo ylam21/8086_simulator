@@ -1,27 +1,14 @@
-#include <stdio.h>
-#include <stdbool.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include "common.h" 
-#include "utils/io_utils.h"
-#include "decoder/decoder.h"
-#include "decoder/opcodes.h"
+#include "base/base_inc.h"
+#include "decoder/decoder_inc.h"
 #include "print_instruction.h"
 #include "execute_instruction.h"
 
-#define MASK_EXECUTE 0
-#define MASK_DISASM 1
-#define MASK_DUMP 2
+#include "base/base_inc.c"
+#include "decoder/decoder_inc.c"
+#include "print_instruction.c"
+#include "execute_instruction.c"
 
-enum start_flags
-{
-    StartFlagExecute = 0x1,
-    StartFlagDisasm = 0x2,
-    StartFlagDump = 0x4,
-};
-
-static void write_memory(u8 *memory, u64 size)
+void write_memory(u8 *memory, u64 size)
 {
     const char *filename = "sim86_memory.data";
     s32 fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
@@ -35,7 +22,7 @@ static void write_memory(u8 *memory, u64 size)
     fprintf(stdout, "Written dump data to: \"%s\"\n", filename);
 }
 
-static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 startFlags)
+void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 startFlags)
 {
     u8 opcode;
 
@@ -78,7 +65,7 @@ static void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 st
     }
 }
 
-static void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
+void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
 {
     u8 opcode;
     t_ctx ctx = 

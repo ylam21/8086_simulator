@@ -1,17 +1,14 @@
-#include "decoder.h"
-#include "opcodes.h"
-
-static Operand decode_operand_reg(u8 REG)
+Operand decode_operand_reg(u8 REG)
 {
     return (Operand){.type = OP_REGISTER, .reg_idx = REG};
 }
 
-static Operand decode_operand_sreg(u8 REG)
+Operand decode_operand_sreg(u8 REG)
 {
     return (Operand){.type = OP_SREG, .reg_idx = REG};
 }
 
-static Operand decode_operand_mem(u8 W, u8 add_lo, u8 add_hi)
+Operand decode_operand_mem(u8 W, u8 add_lo, u8 add_hi)
 {
     Operand op = {.type = OP_MEMORY_DIR};
     if (W == 0)
@@ -25,7 +22,7 @@ static Operand decode_operand_mem(u8 W, u8 add_lo, u8 add_hi)
     return op;
 }
 
-static Operand decode_operand_rm(t_ctx *ctx, u8 MOD, u8 RM)
+Operand decode_operand_rm(t_ctx *ctx, u8 MOD, u8 RM)
 {
     Operand op = {0};
     if (MOD == 0b00 && RM == 0b110)
@@ -65,7 +62,7 @@ static Operand decode_operand_rm(t_ctx *ctx, u8 MOD, u8 RM)
 }
 
 // TODO: implement jump table
-static u8 match_MODRM_with_offset(u8 MOD, u8 RM)
+u8 match_MODRM_with_offset(u8 MOD, u8 RM)
 {
     if (MOD == 0b00)
     {
@@ -106,7 +103,7 @@ Instruction opcode_not_used(t_ctx *ctx)
 }
 
 
-static Operand decode_operand_imm(u8 S, u8 W, u8 *imm_ptr)
+Operand decode_operand_imm(u8 S, u8 W, u8 *imm_ptr)
 {
     Operand op = {0};
     op.type = OP_IMMEDIATE;
@@ -340,7 +337,7 @@ Instruction imm_to_acc(t_ctx *ctx)
     return inst;
 }
 
-static Instruction modrm(t_ctx *ctx, String8 mnemonic)
+Instruction modrm(t_ctx *ctx, String8 mnemonic)
 {
     u8 opcode = ctx->b[0];
     u8 D = (opcode >> 1) & 1;

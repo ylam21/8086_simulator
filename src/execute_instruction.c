@@ -1,29 +1,8 @@
-#include "execute_instruction.h"
-#include "decoder/opcodes.h"
-#include "decoder/decoder.h"
-#include "utils/io_utils.h"
-#include <string.h>
-#include <stdbool.h>
-
-#define MASK_WIDE 0
-#define MASK_LOW 1
-#define MASK_HIGH 2
-
-#define POS_CF 0  // carry status flag ; 'POS' stands for position in its register
-#define POS_PF 2  // parity status flag
-#define POS_AF 4  // auxiliary status flag
-#define POS_ZF 6  // zero status flag
-#define POS_SF 7  // sign status flag
-#define POS_TF 8  // overflow status flag
-#define POS_IF 9  // interrupt-enable control flag
-#define POS_DF 10 // direction control flag
-#define POS_OF 11 // trap control flag
-
-static const u8 flag_map[9] = { 
+const u8 flag_map[9] = { 
     POS_OF, POS_DF, POS_IF, POS_TF, POS_SF, POS_ZF, POS_AF, POS_PF, POS_CF 
 };
 
-static void mod_ZF(u16 *reg, u32 res)
+void mod_ZF(u16 *reg, u32 res)
 {
     if (res == 0)
     {
@@ -35,7 +14,7 @@ static void mod_ZF(u16 *reg, u32 res)
     }
 }
 
-static void mod_PF(u16 *reg, u32 res)
+void mod_PF(u16 *reg, u32 res)
 {
     u8 cnt = __builtin_popcount(res & 0xFF);
 
@@ -49,7 +28,7 @@ static void mod_PF(u16 *reg, u32 res)
     }
 }
 
-static void mod_SF(u16 *reg, u32 res, u8 mask_dest)
+void mod_SF(u16 *reg, u32 res, u8 mask_dest)
 {
     u8 width_bit;
     if (mask_dest == MASK_WIDE || mask_dest == MASK_HIGH)
@@ -156,7 +135,7 @@ void print_final_regs(Arena *arena, s32 fd, u16 *regs)
     if (written == -1) return;
 }
 
-static void modifyDest(u16 *destPtr, u16 val, u8 mask, OperandType dType)
+void modifyDest(u16 *destPtr, u16 val, u8 mask, OperandType dType)
 {
     if (dType == OP_MEMORY || dType == OP_MEMORY_DIR)
     {
@@ -252,23 +231,13 @@ u8 decode_final_reg_idx_from_reg(Operand reg, u8 W)
     }
 }
 
-static void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
+void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
 {
     mod_ZF(reg, res);
     mod_PF(reg, res);
     mod_SF(reg, res, mask_dest);
 }
 
-typedef u16 (*calcMemoryAddressFunc)(u16 *regs);
-
-u16 calc_bx_plus_si(u16 *regs);
-u16 calc_bx_plus_di(u16 *regs);
-u16 calc_bp_plus_si(u16 *regs);
-u16 calc_bp_plus_di(u16 *regs);
-u16 calc_si(u16 *regs);
-u16 calc_di(u16 *regs);
-u16 calc_bp(u16 *regs);
-u16 calc_bx(u16 *regs);
 
 calcMemoryAddressFunc calc_mem_table[8] =
 {
@@ -291,18 +260,11 @@ u16 calc_di(u16 *regs) {return regs[DI_IDX];};
 u16 calc_bp(u16 *regs) {return regs[BP_IDX];};
 u16 calc_bx(u16 *regs) {return regs[BX_IDX];};
 
-static u16 calc_memory_address(Operand op, Cpu *cpu)
+u16 calc_memory_address(Operand op, Cpu *cpu)
 {
     u16 base_address = calc_mem_table[op.mem_base_reg](cpu->regs);
     return base_address + op.mem_disp;
 }
-
-#define INST_MOV STR8_LIT("mov")
-#define INST_ADD STR8_LIT("add")
-#define INST_SUB STR8_LIT("sub")
-#define INST_CMP STR8_LIT("cmp")
-#define INST_JNZ STR8_LIT("jnz")
-#define INST_LOOP STR8_LIT("loop")
 
 void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx)
 {
