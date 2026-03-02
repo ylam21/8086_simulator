@@ -7,3 +7,4 @@ out.asm
 
 *.env
 *.data
+*.gdb_history
