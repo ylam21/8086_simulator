@@ -1,5 +1,3 @@
-#include "conversion.h"
-
 void apply_padding(Arena *arena, String8 s, t_fmt_opt opt)
 {
     if (s.size >= (u64)opt.width)

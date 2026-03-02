@@ -1,5 +1,3 @@
-#include "conversion.h"
-
 void handle_char(Arena *arena, va_list args, t_fmt_opt opt)
 {
     u8 c = (u8)va_arg(args, s32);

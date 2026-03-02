@@ -1,5 +1,3 @@
-#include "opcodes.h"
-
 func_ptr opcode_table[256] =
 {
     [0x00] = modrm_common,

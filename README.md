@@ -21,17 +21,17 @@ make all
 Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:<br>
 ***Execution/Simulation Mode:***<br>
 ```sh
-bin/simulate8086 <filename> -exec
+./simulate8086 <filename> -exec
 ```
 ***Disassembly Mode:***<br>
 ```sh
-bin/simulate8086 <filename>
+./simulate8086 <filename>
 ```
 The output of the simulation will be written to `out.txt` file in the current directory.
 ### Examples:
 *(Example input)*<br>
 ```sh
-bin/simulate8086 examples/listing_0038_many_register_mov
+./simulate8086 examples/listing_0038_many_register_mov
 ```
 *(Example output)*<br>
 ```asm
@@ -51,7 +51,7 @@ mov bp, ax
 ```
 *(Example input)*<br>
 ```sh
-bin/simulate8086 examples/listing_0043_immediate_movs.asm -exec
+./simulate8086 examples/listing_0043_immediate_movs.asm -exec
 ```
 *(Example output)*<br>
 ```asm
@@ -80,7 +80,7 @@ Final Registers:
 ```
 *(Example input)*<br>
 ```sh
-bin/simulate8086 examples/listing_0046_add_sub_cmp.asm -exec
+./simulate8086 examples/listing_0046_add_sub_cmp.asm -exec
 ```
 *(Example output)*<br>
 ```asm
@@ -104,7 +104,7 @@ Final Registers:
 ```
 *(Example input)*<br>
 ```sh
-bin/simulate8086 examples/listing_0049_conditional_jumps -exec
+./simulate8086 examples/listing_0049_conditional_jumps -exec
 ```
 *(Example output)*<br>
 ```asm

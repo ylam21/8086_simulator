@@ -1,5 +1,3 @@
-#include "print_instruction.h"
-
 String8 table_reg_w_zero[8] =
 {
     STR8_LIT("al"),
@@ -44,18 +42,6 @@ String8 table_sreg[4] =
     STR8_LIT("ds"),
 };
 
-typedef String8 (*translateOperand)(Arena *arena, Operand op, u8 W);
-
-String8 translateOpNone(Arena *arena, Operand op, u8 W);
-String8 translateOpRegister(Arena *arena, Operand op, u8 W);
-String8 translateOpRegisterDx(Arena *arena, Operand op, u8 W);
-String8 translateOpRegisterCl(Arena *arena, Operand op, u8 W);
-String8 translateOpSegRegister(Arena *arena, Operand op, u8 W);
-String8 translateOpImmediate(Arena *arena, Operand op, u8 W);
-String8 translateOpMemory(Arena *arena, Operand op, u8 W);
-String8 translateOpMemoryDir(Arena *arena, Operand op, u8 W);
-String8 translateOpIpRelative(Arena *arena, Operand op, u8 W);
-
 translateOperand translate_table[OP_COUNT] =
 {
     [OP_NONE] = translateOpNone,
@@ -75,7 +61,7 @@ String8 translateOpNone(Arena *arena, Operand op, u8 W)
     (void)op;
     (void)W;
     return (String8){0};
-};
+}
 
 String8 translateOpRegister(Arena *arena, Operand op, u8 W)
 {

@@ -1,6 +1,4 @@
-#include "conversion.h"
-
-static void handle_hex_ptr(Arena *arena, va_list args, t_fmt_opt opt, u8 table[16])
+void handle_hex_ptr(Arena *arena, va_list args, t_fmt_opt opt, u8 table[16])
 {
     void *ptr = va_arg(args, void *);
     u64 val = (u64)ptr;
