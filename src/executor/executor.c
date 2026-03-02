@@ -238,7 +238,6 @@ void modify_flag_reg(u16 *reg, u32 res, u8 mask_dest)
     mod_SF(reg, res, mask_dest);
 }
 
-
 calcMemoryAddressFunc calc_mem_table[8] =
 {
     [0] = calc_bx_plus_si,

@@ -1,5 +1,5 @@
-#ifndef PRINT_INSTRUCTION_H
-#define PRINT_INSTRUCTION_H
+#ifndef DISASSEMBLER_H
+#define DISASSEMBLER_H
 
 typedef String8 (*translateOperand)(Arena *arena, Operand op, u8 W);
 

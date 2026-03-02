@@ -23,6 +23,8 @@ typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
 
+#define CHAR_SPACE ' '
+
 #define AX_IDX 0 
 #define CX_IDX 1
 #define DX_IDX 2
@@ -37,12 +39,23 @@ typedef int64_t s64;
 #define MASK_EXECUTE 0
 #define MASK_DISASM 1
 #define MASK_DUMP 2
+#define MASK_SHOWCLOCKS 3
+#define MASK_EXPLAINCLOCKS 4
+
+#define INST_MOV STR8_LIT("mov")
+#define INST_ADD STR8_LIT("add")
+#define INST_SUB STR8_LIT("sub")
+#define INST_CMP STR8_LIT("cmp")
+#define INST_JNZ STR8_LIT("jnz")
+#define INST_LOOP STR8_LIT("loop")
 
 enum start_flags
 {
     StartFlagExecute = 0x1,
     StartFlagDisasm = 0x2,
     StartFlagDump = 0x4,
+    StartFlagShowClocks = 0x8,
+    StartFlagExplainClocks = 0x10,
 };
 
 typedef struct Cpu Cpu;

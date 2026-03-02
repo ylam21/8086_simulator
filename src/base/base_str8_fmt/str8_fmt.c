@@ -1,3 +1,5 @@
+#include "specifier_table.c"
+
 t_fmt_opt parse_options(String8 fmt, u64 *pos)
 {
     t_fmt_opt opt = { .padding_char = CHAR_SPACE, .width = 0, .left_align = 0 , .is_conditional = 0};

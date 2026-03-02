@@ -1,12 +1,14 @@
 #include "base/base_inc.h"
 #include "decoder/decoder_inc.h"
-#include "print_instruction.h"
-#include "execute_instruction.h"
+#include "profiler/profiler_inc.h"
+#include "disassembler/disassembler_inc.h"
+#include "executor/executor_inc.h"
 
 #include "base/base_inc.c"
 #include "decoder/decoder_inc.c"
-#include "print_instruction.c"
-#include "execute_instruction.c"
+#include "profiler/profiler_inc.c"
+#include "disassembler/disassembler_inc.c"
+#include "executor/executor_inc.c"
 
 void write_memory(u8 *memory, u64 size)
 {
@@ -22,7 +24,7 @@ void write_memory(u8 *memory, u64 size)
     fprintf(stdout, "Written dump data to: \"%s\"\n", filename);
 }
 
-void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u8 startFlags)
+void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u32 startFlags)
 {
     u8 opcode;
 
@@ -96,7 +98,7 @@ int main(int argc, char **argv)
         return (EXIT_FAILURE);
     }
 
-    u8 StartFlags = 0;
+    u32 StartFlags = 0;
 
     u8 idx = 0;
     char *arg = argv[idx];
@@ -114,6 +116,14 @@ int main(int argc, char **argv)
         else if (strcmp(arg, "-disasm") == 0)
         {
             StartFlags |= StartFlagDisasm;
+        }
+        else if (strcmp(arg, "-showclocks") == 0)
+        {
+            StartFlags |= StartFlagShowClocks;
+        }
+        else if (strcmp(arg, "-explainclocks") == 0)
+        {
+            StartFlags |= StartFlagExplainClocks;
         }
         else if (arg[0] != '-')
         {
@@ -171,6 +181,10 @@ int main(int argc, char **argv)
     if (StartFlags & StartFlagExecute)
     {
         execute_8086(arena, buffer, (u64)read_bytes, fd_out, StartFlags);
+    }
+    else if (StartFlags & StartFlagShowClocks || StartFlags & StartFlagExplainClocks)
+    {
+        run_8086_profiler(arena, buffer, (u64)read_bytes, fd_out, StartFlags);
     }
     else
     {

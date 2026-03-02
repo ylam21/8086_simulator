@@ -10,3 +10,5 @@ out.asm
 *.data
 *.gdb_history
 compile_commands.json
+*.vscode
+simulate8086

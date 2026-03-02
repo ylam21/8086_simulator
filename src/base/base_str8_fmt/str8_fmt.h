@@ -11,8 +11,6 @@ struct t_fmt_opt
     u8 is_conditional; // special handling for '?' prefix specifier
 };
 
-#define CHAR_SPACE ' '
-
 typedef void (*fmt_handler_t)(Arena *arena, va_list args, t_fmt_opt opt);
 
 String8 str8_fmt(Arena *arena, String8 fmt, ...);

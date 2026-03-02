@@ -1,5 +1,5 @@
-#ifndef EXECUTE_INSTRUCTION_H
-#define EXECUTE_INSTRUCTION_H
+#ifndef EXECUTOR_H
+#define EXECUTOR_H
 
 #define MASK_WIDE 0
 #define MASK_LOW 1
@@ -14,13 +14,6 @@
 #define POS_IF 9  // interrupt-enable control flag
 #define POS_DF 10 // direction control flag
 #define POS_OF 11 // trap control flag
-
-#define INST_MOV STR8_LIT("mov")
-#define INST_ADD STR8_LIT("add")
-#define INST_SUB STR8_LIT("sub")
-#define INST_CMP STR8_LIT("cmp")
-#define INST_JNZ STR8_LIT("jnz")
-#define INST_LOOP STR8_LIT("loop")
 
 typedef u16 (*calcMemoryAddressFunc)(u16 *regs);
 
