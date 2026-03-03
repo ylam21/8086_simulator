@@ -6,7 +6,7 @@ This program simulates an Intel 8086 processor and can run in three distinct mod
 * **Simulation/Execution Mode (`-exec`):** Simulates the 8086 CPU by tracking and updating all internal register states. It processes the binary machine code, outputs the readable assembly, and annotates every line with the state changes of the destination register, the flags, and the instruction pointer (IP). It also outputs the final state of all registers that hold a non-zero value.
   * *Optional:* Providing an extra `-dump` flag will dump the entire 1MB content of the simulated memory to a `sim86_memory.data` file.
 
-* **Profiler Mode (`-showclocks` or `-explainclocks`):** Processes the binary, converts it to readable assembly, and annotates every line with the exact clock-cycle execution time for each instruction.
+* **Profiler Mode (`-showclocks` or `-explainclocks`):** Processes the binary, converts it to readable assembly, and annotates every line with the estimate clock-cycle execution time for each instruction.
   * *Optional:* Using the `-explainclocks` flag instead of `-showclocks` will add an extra formula breakdown explaining exactly how the final cycle count was calculated (e.g., base clocks + Effective Address calculation penalties).
 ## Context
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
