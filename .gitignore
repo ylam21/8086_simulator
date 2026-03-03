@@ -12,3 +12,4 @@ out.asm
 compile_commands.json
 *.vscode
 simulate8086
+*_out.asm
