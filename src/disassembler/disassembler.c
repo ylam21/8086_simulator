@@ -202,3 +202,27 @@ void print_instruction(Arena *arena, s32 fd, Instruction inst)
     s32 written = write(fd, padded_res.str, padded_res.size);
     if (written == -1) return;
 }
+
+void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
+{
+    u8 opcode;
+    t_ctx ctx = 
+    {
+        .b = buffer,
+        .ip = 0,
+        .seg_prefix = 0xFF,
+    };
+    while (ctx.ip < read_bytes)
+    {
+        u64 scratch_start = arena->pos;
+        ctx.b = &buffer[ctx.ip];
+        opcode = ctx.b[0];
+        func_ptr handler = opcode_table[opcode];
+        Instruction inst = handler(&ctx);
+        ctx.ip += inst.size;
+        print_instruction(arena, fd, inst);
+        s32 written = write(fd, "\n", 1);
+        if (written == -1) return;
+        arena->pos = scratch_start;
+    }
+}

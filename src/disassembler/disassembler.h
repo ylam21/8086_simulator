@@ -3,6 +3,7 @@
 
 typedef String8 (*translateOperand)(Arena *arena, Operand op, u8 W);
 
+void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd);
 void print_instruction(Arena *arena, s32 fd, Instruction inst);
 u8 is_shift(String8 mnemonic);
 String8 translateOpNone(Arena *arena, Operand op, u8 W);

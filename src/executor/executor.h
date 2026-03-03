@@ -17,6 +17,8 @@
 
 typedef u16 (*calcMemoryAddressFunc)(u16 *regs);
 
+void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u32 startFlags);
+void write_memory(u8 *memory, u64 size);
 void execute_instruction(Arena *arena, s32 fd, Cpu *cpu, Instruction inst, u16 *regsStateOld, t_ctx *ctx);
 u16 calc_memory_address(Operand op, Cpu *cpu);
 void print_final_regs(Arena *arena, s32 fd, u16 *regs);
