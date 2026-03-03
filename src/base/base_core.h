@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <ctype.h>
 
 #define PROGRAM_PATH "./simulate8086"
 #define MegaByte(d) ((d) << 20)

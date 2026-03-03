@@ -3,65 +3,117 @@ u8 isTypeReg(OperandType t)
 	return (t == OP_REGISTER || t == OP_REGISTER_CL || t == OP_REGISTER_DX);
 }
 
-u8 prof_mov_imm_to_reg(Instruction inst)
+u8 prof_mov_imm_to_reg(prof_ctx *ctx)
 {
-	(void)inst;
+	(void)ctx;
 	return 4;
 }
 
-u8 prof_opcode_not_used(Instruction inst)
+u8 prof_opcode_not_used(prof_ctx *ctx)
 {
-	(void)inst;
+	(void)ctx;
 	return 0;
 }
 
-u8 prof_modrm_common(Instruction inst) {return prof_modrm(&inst);}
-u8 prof_modrm_test_xchg_mov(Instruction inst) {return prof_modrm(&inst);}
-
-u8 prof_modrm(Instruction *inst)
+u8 prof_modrm_common(prof_ctx *ctx)
 {
-	OperandType dType = inst->dest.type;
-	OperandType sType = inst->src.type;
+	u8 offsets[3] =
+	{
+		[OFFSET_REG_TO_REG] = 3,
+		[OFFSET_MEM_TO_REG] = 9,
+		[OFFSET_REG_TO_MEM] = 16,
+	};
+	u8 penalty[3] =
+	{
+		[OFFSET_REG_TO_REG] = 0,
+		[OFFSET_MEM_TO_REG] = 1,
+		[OFFSET_REG_TO_MEM] = 2,
+	};
+	return prof_modrm(ctx, offsets, penalty);
+}
+
+u8 prof_modrm_test_xchg_mov(prof_ctx *ctx)
+{
+	u8 offsets[3] = 
+	{
+		[OFFSET_REG_TO_REG] = 2,
+		[OFFSET_MEM_TO_REG] = 8,
+		[OFFSET_REG_TO_MEM] = 9,
+	};
+	u8 penalty[3] =
+	{
+		[OFFSET_REG_TO_REG] = 0,
+		[OFFSET_MEM_TO_REG] = 1,
+		[OFFSET_REG_TO_MEM] = 2,
+	};
+	return prof_modrm(ctx, offsets, penalty);
+}
+
+// NOTE: offsets is always contains 3 u8's
+u8 prof_modrm(prof_ctx *ctx, u8 *offsets, u8 *transfer_penalty)
+{
+	OperandType dType = ctx->inst.dest.type;
+	OperandType sType = ctx->inst.src.type;
+	u8 ea_field = 0;
+	u8 offset = 0;
 	
 	if (isTypeReg(dType) && isTypeReg(sType))
 	{
-		return 2;
+		return offsets[OFFSET_REG_TO_REG];
 	}
 	else if (isTypeReg(dType) && (sType == OP_MEMORY || sType == OP_MEMORY_DIR))
 	{
-		u8 clocks = 8;
-		if (sType == OP_MEMORY_DIR)
+		ea_field = calc_EA_field(&ctx->inst.src);
+		offset = offsets[OFFSET_MEM_TO_REG];
+		if (ctx->inst.src.mem_disp & 1) // the address is odd
 		{
-			return clocks + 6;
-		}
-		clocks += match_EA_component_with_clocks[inst->src.mem_base_reg];
-		if (inst->src.mem_disp != 0)
-		{
-			return clocks + 4;
+			u8 penalty = transfer_penalty[OFFSET_MEM_TO_REG] << 2;
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea + %up)"), offset, ea_field,penalty);
+			return offset + ea_field + penalty;
 		}
 		else
 		{
-			return clocks;
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea)"), offset, ea_field);
+			return  offset + ea_field;
 		}
 	}
 	else if ((dType == OP_MEMORY || dType == OP_MEMORY_DIR) && isTypeReg(sType))
 	{
-		u8 clocks = 9;
-		if (dType == OP_MEMORY_DIR)
+		ea_field = calc_EA_field(&ctx->inst.dest);
+		offset = offsets[OFFSET_REG_TO_MEM];
+		if (ctx->inst.dest.mem_disp & 1) // the address is odd
 		{
-			return clocks + 6;
-		}
-		clocks += match_EA_component_with_clocks[inst->dest.mem_base_reg];
-		if (inst->dest.mem_disp != 0)
-		{
-			return clocks + 4;
+			u8 penalty = transfer_penalty[OFFSET_REG_TO_MEM] << 2;
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea + %up)"), offset, ea_field,penalty);
+			return offset + ea_field + penalty;
 		}
 		else
 		{
-			return clocks;
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea)"), offset, ea_field);
+			return  offset + ea_field;
 		}
 	}
 	return 0;
+}
+
+
+u8 calc_EA_field(Operand *op)
+{
+	if (op->type == OP_MEMORY_DIR)
+	{
+		return 6;
+	}
+	else
+	{
+		if (op->mem_disp)
+		{
+			return match_EA_component_with_clocks[op->mem_base_reg] + 4;
+		}
+		else
+		{
+			return match_EA_component_with_clocks[op->mem_base_reg];
+		}
+	}
 }
 
 u8 match_EA_component_with_clocks[RM_EAC_CNT] =
@@ -75,6 +127,32 @@ u8 match_EA_component_with_clocks[RM_EAC_CNT] =
 	[RM_BP] = 5,
 	[RM_BX] = 5,
 };
+
+u8 prof_imm_to_rm(prof_ctx *ctx)
+{
+	OperandType dType = ctx->inst.dest.type;
+
+	if (isTypeReg(dType))
+	{
+		return 4;
+	}
+	else
+	{		
+		u8 offset = 17;
+		u8 ea_field = calc_EA_field(&ctx->inst.dest);
+		if (ctx->inst.dest.mem_disp & 1)
+		{
+			u8 transfer_penalty = 8; // (2 * 4)
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea + %up)"), offset, ea_field, transfer_penalty);
+			return offset + ea_field + transfer_penalty;
+		}
+		else
+		{
+			ctx->formula = str8_fmt(ctx->arena, STR8_LIT("(%u + %uea)"), offset, ea_field);
+			return  offset + ea_field;
+		}
+	}
+}
 
 profilerFuncPtr profilerFuncPtrTable[256] = 
 {    
@@ -111,7 +189,10 @@ profilerFuncPtr profilerFuncPtrTable[256] =
     [0x39] = prof_modrm_common,
     [0x3A] = prof_modrm_common,
     [0x3B] = prof_modrm_common,
-
+    [0x80] = prof_imm_to_rm,
+    [0x81] = prof_imm_to_rm,
+    [0x82] = prof_imm_to_rm,
+    [0x83] = prof_imm_to_rm,
 	[0x84] = prof_modrm_test_xchg_mov,
     [0x85] = prof_modrm_test_xchg_mov,
     [0x86] = prof_modrm_test_xchg_mov,

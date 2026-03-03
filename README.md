@@ -1,8 +1,13 @@
 # 8086 Simulator
-The program can run in 2 different modes.<br>
-**The first mode** is disassembly mode - program will convert binary machine code into readable assembly.<br>
-**The second mode** is simulation/execution mode - program will simulate 8086 CPU. Such that it stores and updates all states of the cpu's registers. It processes a binary machine code file, converts into readable assembly and annotates every line with the state change of the destination register and the state change of flag and ip registers. It also outputs the final state of all registers that store non-zero value.
+This program simulates an Intel 8086 processor and can run in three distinct modes:
 
+* **Disassembly Mode (`-disasm`):** Converts binary machine code into readable assembly language.
+
+* **Simulation/Execution Mode (`-exec`):** Simulates the 8086 CPU by tracking and updating all internal register states. It processes the binary machine code, outputs the readable assembly, and annotates every line with the state changes of the destination register, the flags, and the instruction pointer (IP). It also outputs the final state of all registers that hold a non-zero value.
+  * *Optional:* Providing an extra `-dump` flag will dump the entire 1MB content of the simulated memory to a `sim86_memory.data` file.
+
+* **Profiler Mode (`-showclocks` or `-explainclocks`):** Processes the binary, converts it to readable assembly, and annotates every line with the exact clock-cycle execution time for each instruction.
+  * *Optional:* Using the `-explainclocks` flag instead of `-showclocks` will add an extra formula breakdown explaining exactly how the final cycle count was calculated (e.g., base clocks + Effective Address calculation penalties).
 ## Context
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
 All example files provided under the `examples/` folder are sourced from the [computer_enhance github repo](https://github.com/cmuratori/computer_enhance).
@@ -126,4 +131,31 @@ Final Registers:
         bx: 0x0406 (1030)
         ip: 0x000e (14)
      flags: [     Z P ]
+```
+*(Example input)*<br>
+```sh
+/simulate8086 examples/listing_0057_challenge_cycles -explainclocks
+```
+*(Example output)*<br>
+```asm
+bits 16
+
+                            ; Clock Counter (Profiler)
+mov bx, 1000                ; +4  = 4   
+mov bp, 2000                ; +4  = 8   
+mov si, 3000                ; +4  = 12  
+mov di, 4000                ; +4  = 16  
+mov cx, [bp + di]           ; +15 = 31  (8 + 7ea)
+mov [bx + si], cx           ; +16 = 47  (9 + 7ea)
+mov cx, [bp + si]           ; +16 = 63  (8 + 8ea)
+mov [bx + di], cx           ; +17 = 80  (9 + 8ea)
+mov cx, [bp + di + 1000]    ; +19 = 99  (8 + 11ea)
+mov [bx + si + 1000], cx    ; +20 = 119 (9 + 11ea)
+mov cx, [bp + si + 1000]    ; +20 = 139 (8 + 12ea)
+mov [bx + di + 1000], cx    ; +21 = 160 (9 + 12ea)
+add dx, [bp + si + 1000]    ; +21 = 181 (9 + 12ea)
+add [bp + si], word 76      ; +25 = 206 (17 + 8ea)
+add dx, [bp + si + 1001]    ; +25 = 231 (9 + 12ea + 4p)
+add [di + 999], dx          ; +33 = 264 (16 + 9ea + 8p)
+add [bp + si], word 75      ; +25 = 289 (17 + 8ea)
 ```

@@ -10,6 +10,28 @@
 #include "disassembler/disassembler_inc.c"
 #include "executor/executor_inc.c"
 
+String8 create_filename_out_from_listing_examples(Arena *arena, char *s)
+{
+    u8 temp[10];
+    u8 temp_pos = 0;
+    u32 pos = 0;
+    while (s[pos])
+    {
+        if (isdigit(s[pos]) && temp_pos < 10)
+        {
+            temp[temp_pos] = s[pos];
+            temp_pos += 1;
+        }
+        pos += 1;
+    }
+
+    String8 res = str8_fmt(arena, STR8_LIT("%s_out.asm"), (String8){.size = temp_pos, .str = temp});
+    u8 *null_term = arena_push_packed(arena, 1);
+    *null_term = '\0';
+    return res;
+}
+
+
 void write_memory(u8 *memory, u64 size)
 {
     const char *filename = "sim86_memory.data";
@@ -45,6 +67,7 @@ void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u32 startFla
 
     while (ctx.ip < read_bytes)
     {
+        u64 scratch_start = arena->pos;
         memcpy(regsStateOld, cpu.regs, 14 * sizeof(u16)); // NOTE: save the old state of cpu.regs
         ctx.b = &buffer[ctx.ip];
         opcode = ctx.b[0];
@@ -57,7 +80,7 @@ void execute_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd, u32 startFla
         s32 written = write(fd, "\n", 1);
         if (written == -1) return;
         
-        arena_reset(arena);
+        arena->pos = scratch_start;
     }
     print_final_regs(arena, fd, cpu.regs);
 
@@ -78,6 +101,7 @@ void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
     };
     while (ctx.ip < read_bytes)
     {
+        u64 scratch_start = arena->pos;
         ctx.b = &buffer[ctx.ip];
         opcode = ctx.b[0];
         func_ptr handler = opcode_table[opcode];
@@ -86,15 +110,25 @@ void disasm_8086(Arena *arena, u8 *buffer, u64 read_bytes, s32 fd)
         print_instruction(arena, fd, inst);
         s32 written = write(fd, "\n", 1);
         if (written == -1) return;
-        arena_reset(arena);
+        arena->pos = scratch_start;
     }
+}
+
+void print_usage(void)
+{
+    fprintf(stdout, "Usage examples:\n");
+    fprintf(stdout, "Execution mode: %s <filename> -exec\n", PROGRAM_PATH);
+    fprintf(stdout, "Execution mode with dump: %s <filename> -exec -dump\n", PROGRAM_PATH);
+    fprintf(stdout, "Disassembly mode: %s <filename> -disasm\n", PROGRAM_PATH);
+    fprintf(stdout, "Profiler mode: %s filename> -showclocks\n", PROGRAM_PATH);
+    fprintf(stdout, "Profiler mode with more explanation: %s <filename> -explainclocks\n", PROGRAM_PATH);
 }
 
 int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: %s <filename> <start_flag>\n", PROGRAM_PATH);
+        print_usage();
         return (EXIT_FAILURE);
     }
 
@@ -102,7 +136,7 @@ int main(int argc, char **argv)
 
     u8 idx = 0;
     char *arg = argv[idx];
-    const char *filename = NULL;
+    char *filename = NULL;
     while (arg)
     {
         if (strcmp(arg, "-exec") == 0)
@@ -129,9 +163,20 @@ int main(int argc, char **argv)
         {
             filename = arg;
         }
+        else if (strcmp(arg, "-help") == 0)
+        {
+            print_usage();
+            return (EXIT_SUCCESS);
+        }
 
         idx += 1;
         arg = argv[idx];
+    }
+
+    if (StartFlags == 0)
+    {
+        fprintf(stdout, "Error: No flags provided. Provide -help flag for more context.\n");
+        return (EXIT_SUCCESS);
     }
 
     s32 fd_in = open(filename, O_RDONLY);
@@ -152,8 +197,16 @@ int main(int argc, char **argv)
 
     fprintf(stdout, "Read %lu bytes from: \"%s\"\n", read_bytes, filename);
 
-    char *filename_out = "out.asm";
-    s32 fd_out = open(filename_out, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+    Arena *arena = arena_create(MegaByte(1));
+    if (!arena)
+    {
+        fprintf(stderr, "Error: Cannot create an arena\n");
+        return (EXIT_FAILURE);
+    }
+
+    String8 filename_out = create_filename_out_from_listing_examples(arena, filename);
+    // filename_out is null terminated
+    s32 fd_out = open((const char *)filename_out.str, O_WRONLY | O_CREAT | O_TRUNC, 0777);
     if (fd_out == -1)
     {
         fprintf(stderr, "Error: Cannot create a file\n");
@@ -171,20 +224,18 @@ int main(int argc, char **argv)
     s32 written = write(fd_out, header.str, header.size);
     if (written == -1) return EXIT_FAILURE;
 
-    Arena *arena = arena_create(1024);
-    if (!arena)
-    {
-        fprintf(stderr, "Error: Cannot create an arena\n");
-        return (EXIT_FAILURE);
-    }
     
     if (StartFlags & StartFlagExecute)
     {
         execute_8086(arena, buffer, (u64)read_bytes, fd_out, StartFlags);
     }
-    else if (StartFlags & StartFlagShowClocks || StartFlags & StartFlagExplainClocks)
+    else if (StartFlags & StartFlagShowClocks)
     {
-        run_8086_profiler(arena, buffer, (u64)read_bytes, fd_out, StartFlags);
+        run_8086_profiler(arena, buffer, (u64)read_bytes, fd_out, StartFlagShowClocks);
+    }
+    else if (StartFlags & StartFlagExplainClocks)
+    {
+        run_8086_profiler(arena, buffer, (u64)read_bytes, fd_out, StartFlagExplainClocks);
     }
     else
     {
@@ -192,7 +243,7 @@ int main(int argc, char **argv)
     }
 
     close(fd_out);
-    fprintf(stdout, "Written output to: \"%s\"\n", filename_out);
+    fprintf(stdout, "Written output to: \"%s\"\n", (const char *)filename_out.str);
     arena_destroy(arena);
     return (EXIT_SUCCESS);
 }
