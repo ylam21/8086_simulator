@@ -10,7 +10,7 @@ This program simulates an Intel 8086 processor and can run in three distinct mod
   * *Optional:* Using the `-explainclocks` flag instead of `-showclocks` will add an extra formula breakdown explaining exactly how the final cycle count was calculated (e.g., base clocks + Effective Address calculation penalties).
 ## Context
 This project is a solution for one of the homework assignments in Casey Muratori's [Performance-Aware Programming](https://www.computerenhance.com/) course.<br>
-All example files provided under the `examples/` folder are sourced from the [computer_enhance github repo](https://github.com/cmuratori/computer_enhance).
+All example files provided under the `examples/` folder are copy-pasted from the [computer_enhance github repo](https://github.com/cmuratori/computer_enhance).
 
 ## References
 [Intel 8086 Family User's Manual October 1979](https://archive.org/details/bitsavers_intel80869lyUsersManualOct79_62967963/page/n1/mode/2up) [archive.org]<br>
@@ -25,6 +25,10 @@ make all
 or just compile directly with gcc:
 ```sh
 gcc src/main.c -o simulate8086
+```
+To compile the program in debug mode:
+```sh
+make debug
 ```
 ### Run
 Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:<br>
