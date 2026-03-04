@@ -133,7 +133,6 @@ int main(int argc, char **argv)
     if (read_bytes == 0)
     {
         fprintf(stderr, "Nothing to decode\n");
-        close(fd_out);
         return (EXIT_SUCCESS);
     }
 
@@ -159,8 +158,9 @@ int main(int argc, char **argv)
         disasm_8086(arena, buffer, (u64)read_bytes, fd_out);
     }
 
-    close(fd_out);
     fprintf(stdout, "Written output to: \"%s\"\n", (const char *)filename_out.str);
-    arena_destroy(arena);
+    #ifdef DEBUG
+       arena_destroy(arena);
+    #endif
     return (EXIT_SUCCESS);
 }

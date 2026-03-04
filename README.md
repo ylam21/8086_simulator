@@ -22,6 +22,10 @@ Use the `Makefile` to build the executable:
 ```sh
 make all
 ```
+or just compile directly with gcc:
+```sh
+gcc src/main.c -o simulate8086
+```
 ### Run
 Provide the path to an 8086 asm file as an argument and provide optional ```-exec``` flag:<br>
 ***Execution/Simulation Mode:***<br>
